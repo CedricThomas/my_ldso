@@ -7,49 +7,49 @@
 #include <string.h>
 #include <link.h>
 
-// Fonction pour afficher l'en-tête ELF
-void print_elf_header(ElfW(Ehdr) *ehdr) {
+// print_elf_header prints the ELF header content
+void print_elf_header(ElfW(Ehdr) *elf_hdr) {
     printf("ELF Header:\n");
-    printf("  Magic:   %02x %02x %02x %02x\n", ehdr->e_ident[EI_MAG0], ehdr->e_ident[EI_MAG1], ehdr->e_ident[EI_MAG2], ehdr->e_ident[EI_MAG3]);
-    printf("  Class:                             %s\n", ehdr->e_ident[EI_CLASS] == ELFCLASS32 ? "ELF32" : "ELF64");
-    printf("  Entry point address:               0x%lx\n", (unsigned long)ehdr->e_entry);
-    printf("  Program header offset:             %ld (bytes into file)\n", (long)ehdr->e_phoff);
-    printf("  Section header offset:             %ld (bytes into file)\n", (long)ehdr->e_shoff);
-    printf("  Number of program headers:         %d\n", ehdr->e_phnum);
-    printf("  Number of section headers:         %d\n", ehdr->e_shnum);
+    printf("  Magic:   %02x %02x %02x %02x\n", elf_hdr->e_ident[EI_MAG0], elf_hdr->e_ident[EI_MAG1], elf_hdr->e_ident[EI_MAG2], elf_hdr->e_ident[EI_MAG3]);
+    printf("  Class:                             %s\n", elf_hdr->e_ident[EI_CLASS] == ELFCLASS32 ? "ELF32" : "ELF64");
+    printf("  Entry point address:               0x%lx\n", (unsigned long)elf_hdr->e_entry);
+    printf("  Program header offset:             %ld (bytes into file)\n", (long)elf_hdr->e_phoff);
+    printf("  Section header offset:             %ld (bytes into file)\n", (long)elf_hdr->e_shoff);
+    printf("  Number of program headers:         %d\n", elf_hdr->e_phnum);
+    printf("  Number of section headers:         %d\n", elf_hdr->e_shnum);
 }
 
-// Fonction pour afficher les en-têtes de programme
-void print_program_headers(ElfW(Phdr) *phdr, int phnum) {
+// print_program_headers prints an ELF program headers
+void print_program_headers(ElfW(Phdr) *program_hdrs, int size) {
     printf("\nProgram Headers:\n");
-    for (int i = 0; i < phnum; i++) {
-        printf("  Type:   %d\n", phdr[i].p_type);
-        printf("  Offset: 0x%lx\n", (unsigned long)phdr[i].p_offset);
-        printf("  Virtual address: 0x%lx\n", (unsigned long)phdr[i].p_vaddr);
+    for (int i = 0; i < size; i++) {
+        printf("  Type:   %d\n", program_hdrs[i].p_type);
+        printf("  Offset: 0x%lx\n", (unsigned long)program_hdrs[i].p_offset);
+        printf("  Virtual address: 0x%lx\n", (unsigned long)program_hdrs[i].p_vaddr);
     }
 }
 
-// Fonction pour afficher les en-têtes de section
-void print_section_headers(ElfW(Shdr) *shdr, const char *strtab, int shnum) {
+// print_section_headers prints the ELF section headers
+void print_section_headers(ElfW(Shdr) *section_hdrs, const char *names, int size) {
     printf("\nSection Headers:\n");
-    for (int i = 0; i < shnum; i++) {
-        printf("  [%2d] Name: %s\n", i, &strtab[shdr[i].sh_name]);
-        printf("       Type: %d\n", shdr[i].sh_type);
-        printf("       Offset: 0x%lx\n", (unsigned long)shdr[i].sh_offset);
-        printf("       Address: 0x%lx\n", (unsigned long)shdr[i].sh_addr);
+    for (int i = 0; i < size; i++) {
+        printf("  [%2d] Name: %s\n", i, &names[section_hdrs[i].sh_name]);
+        printf("       Type: %d\n", section_hdrs[i].sh_type);
+        printf("       Offset: 0x%lx\n", (unsigned long)section_hdrs[i].sh_offset);
+        printf("       Address: 0x%lx\n", (unsigned long)section_hdrs[i].sh_addr);
     }
 }
 
-// Fonction pour afficher la table des symboles
-void print_symbols(ElfW(Sym) *symtab, const char *strtab, int symnum) {
+// print_symbols prints the ELF symbols
+void print_symbols(ElfW(Sym) *symbols, const char *names, int size) {
     printf("\nSymbols:\n");
-    for (int i = 0; i < symnum; i++) {
-        printf("  [%2d] Name: %s\n", i, &strtab[symtab[i].st_name]);
-        printf("       Value: 0x%lx\n", (unsigned long)symtab[i].st_value);
+    for (int i = 0; i < size; i++) {
+        printf("  [%2d] Name: %s\n", i, &names[symbols[i].st_name]);
+        printf("       Value: 0x%lx\n", (unsigned long)symbols[i].st_value);
     }
 }
 
-// Fonction principale pour lire un fichier ELF et afficher ses structures
+// read_elf reads ELF
 void read_elf(const char *filename) {
     int fd = open(filename, O_RDONLY);
     if (fd < 0) {
@@ -64,7 +64,7 @@ void read_elf(const char *filename) {
         exit(EXIT_FAILURE);
     }
 
-    // Mappe le fichier en mémoire
+    // map the elf in memory
     void *map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (map == MAP_FAILED) {
         perror("mmap");
@@ -72,21 +72,23 @@ void read_elf(const char *filename) {
         exit(EXIT_FAILURE);
     }
 
+    // printing the ELF header
     ElfW(Ehdr) *ehdr = (ElfW(Ehdr) *)map;
     print_elf_header(ehdr);
 
-    // Affiche les en-têtes de programme
+    // printing the ELF program headers
     ElfW(Phdr) *phdr = (ElfW(Phdr) *)(map + ehdr->e_phoff);
     print_program_headers(phdr, ehdr->e_phnum);
 
-    // Affiche les en-têtes de section
+    // printing the ELF section headers
     ElfW(Shdr) *shdr = (ElfW(Shdr) *)(map + ehdr->e_shoff);
     const char *shstrtab = (const char *)(map + shdr[ehdr->e_shstrndx].sh_offset);
     print_section_headers(shdr, shstrtab, ehdr->e_shnum);
 
-    // Recherche la table des symboles
+    // searching the header of the section holding the symbol names
     for (int i = 0; i < ehdr->e_shnum; i++) {
         if (shdr[i].sh_type == SHT_SYMTAB) {
+            // printing the symbols of the ELF
             ElfW(Sym) *symtab = (ElfW(Sym) *)(map + shdr[i].sh_offset);
             const char *strtab = (const char *)(map + shdr[shdr[i].sh_link].sh_offset);
             int symnum = shdr[i].sh_size / sizeof(ElfW(Sym));
@@ -94,7 +96,7 @@ void read_elf(const char *filename) {
         }
     }
 
-    // Nettoyage
+    // cleanup
     munmap(map, st.st_size);
     close(fd);
 }
