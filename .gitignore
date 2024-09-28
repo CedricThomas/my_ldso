@@ -1,3 +1,4 @@
 *.so
 test-*
 *.o
+.vscode/**
