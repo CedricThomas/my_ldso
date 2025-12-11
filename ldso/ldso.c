@@ -8,6 +8,7 @@
 
 #include "types.h"
 #include "unistd.h"
+#include "stdio.h"
 
 ElfW(auxv_t) *get_auxv_entry(ElfW(auxv_t) *auxv, u32 type)
 {
@@ -38,6 +39,8 @@ void ldso_main(u64 *stack)
 	int argc = *stack;
 	char **argv = (void *)&stack[1];
 	char **envp = argv + argc + 1;
+
+	printf("test\n");
 
 	ElfW(auxv_t) *auxv = find_auxv(envp);
 

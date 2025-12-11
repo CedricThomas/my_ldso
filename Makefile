@@ -102,3 +102,11 @@ libc/malloc.o: CPPFLAGS += $(MALLOC_CPPFLAGS)
 
 %.so:
 	$(LINK.o) -shared $^ $(LDLIBS) -o $@
+
+clean:
+	rm -f $(LIBC_OBJS) $(LDSO_OBJS) $(USELESS_OBJS) libc/crt0.o
+
+fclean: clean
+	rm -f $(TEST_LIBS) ld.so $(TESTS)
+
+re: fclean all
