@@ -51,5 +51,6 @@ void ldso_main(u64 *stack)
 
 	u64 entry = get_auxv_entry(auxv, AT_ENTRY)->a_un.a_val;
 
-//	jmp_to_usercode(entry, (u64)stack);
+	// jmp_to_usercode(entry, (u64)stack);
+	printf("END ldso_main\n");
 }

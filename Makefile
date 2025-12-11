@@ -18,7 +18,7 @@ LDSO_OBJS = \
 	    ldso/ldso_start.o \
 	    \
 	    ldso/ldso.o \
-	    ldso/ld_show_aux.o \
+	    ldso/ld_show_auxv.o \
 		$(LIBC_STDIO_OBJS) \
 	    $(LIBC_STRING_OBJS) \
 	    $(LIBC_UNISTD_OBJS) \
