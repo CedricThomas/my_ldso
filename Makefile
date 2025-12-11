@@ -18,7 +18,8 @@ LDSO_OBJS = \
 	    ldso/ldso_start.o \
 	    \
 	    ldso/ldso.o \
-	    $(LIBC_STDIO_OBJS) \
+	    ldso/ld_show_aux.o \
+		$(LIBC_STDIO_OBJS) \
 	    $(LIBC_STRING_OBJS) \
 	    $(LIBC_UNISTD_OBJS) \
 	    libc/malloc.o \

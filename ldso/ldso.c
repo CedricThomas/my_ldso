@@ -1,11 +1,11 @@
 #include <stdbool.h>
 #include <elf.h>
-#include <link.h>
 #include <stddef.h>
 #include <sys/auxv.h>
 #include <asm/mman.h>
 #include <asm-generic/fcntl.h>
 
+#include "ldso.h"
 #include "types.h"
 #include "unistd.h"
 #include "stdio.h"
@@ -28,6 +28,7 @@ ElfW(auxv_t) *find_auxv(char **envp)
 	return (ElfW(auxv_t) *)envp;
 }
 
+
 static inline void jmp_to_usercode(u64 entry, u64 stack)
 {
 	asm volatile ("mov %[stack], %%rsp\n"
@@ -41,9 +42,14 @@ void ldso_main(u64 *stack)
 	char **argv = (void *)&stack[1];
 	char **envp = argv + argc + 1;
 
+
 	ElfW(auxv_t) *auxv = find_auxv(envp);
+
+	if (check_ld_show_auxv(envp)){
+		print_auxv(auxv);
+	}
 
 	u64 entry = get_auxv_entry(auxv, AT_ENTRY)->a_un.a_val;
 
-	jmp_to_usercode(entry, (u64)stack);
+//	jmp_to_usercode(entry, (u64)stack);
 }
