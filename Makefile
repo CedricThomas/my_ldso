@@ -81,7 +81,8 @@ $(TESTS):
 
 $(TESTS): LDFLAGS += -Wl,--dynamic-linker=./ld.so -Wl,-rpath-link=.
 
-test-standalone: LDLIBS = -L. -luseless
+test-standalone: LDLIBS = -L.
+test-standalone: LDFLAGS += -Wl,--no-as-needed -luseless
 test-standalone: libc/crt0.o tests/test-standalone.o $(LIBC_OBJS)
 
 test-onelib: LDLIBS = -L. -lc
