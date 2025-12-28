@@ -11,46 +11,53 @@
 #include "stdio.h"
 #include "stdlib.h"
 
-ElfW(auxv_t) *get_auxv_entry(ElfW(auxv_t) *auxv, u32 type)
-{
-	for (; auxv->a_type != AT_NULL; auxv++)
-		if (auxv->a_type == type)
-			return auxv;
-	return NULL;
-}
-
-ElfW(auxv_t) *find_auxv(char **envp)
-{
-	while (*envp != NULL)
-		envp++;
-	envp++;
-
-	return (ElfW(auxv_t) *)envp;
-}
-
-
 static inline void jmp_to_usercode(u64 entry, u64 stack)
 {
-	asm volatile ("mov %[stack], %%rsp\n"
-		      "push %[entry]\n"
-		      "ret" :: [entry]"rm"(entry), [stack]"rm"(stack));
+    asm volatile ("mov %[stack], %%rsp\n"
+                  "push %[entry]\n"
+                  "ret" :: [entry]"rm"(entry), [stack]"rm"(stack));
 }
 
 void ldso_main(u64 *stack)
 {
-	int argc = *stack;
-	char **argv = (void *)&stack[1];
-	char **envp = argv + argc + 1;
+    int argc = *stack;
+    char **argv = (void *)&stack[1];
+    char **envp = argv + argc + 1;
+    ElfW(auxv_t) *auxv = find_auxv(envp);
 
+    set_program_name(argv[0]);
+    // If LD_SHOW_AUXV is set, printing the auxiliary vector before execution
+    if (check_ld_show_auxv(envp)){
+        print_auxv(auxv);
+    }
 
-	ElfW(auxv_t) *auxv = find_auxv(envp);
+    auxv_info_t auxv_info;
+    load_auxv_info(&auxv_info, auxv);
 
-	if (check_ld_show_auxv(envp)){
-		print_auxv(auxv);
-	}
+    ElfW(Dyn) *dyn = find_dynamic(&auxv_info);
+    if (dyn == NULL) {
+        exit_with_error("invalid dynamic section");
+    }
 
-	u64 entry = get_auxv_entry(auxv, AT_ENTRY)->a_un.a_val;
+    dso_t obj;
+    if (load_dso(&obj, auxv_info.base, dyn, envp)) {
+        exit_with_error("invalid dso object");
+    }
 
-	// jmp_to_usercode(entry, (u64)stack);
-	printf("END ldso_main\n");
+    
+    // If LD_TRACE_LOADED_OBJECTS is set, print the loaded objects statuses
+    if (check_ld_trace_loaded_objects(envp)) {
+        print_loaded_objects(&obj);
+        _exit(0);
+    }
+
+    if (auxv_info.base != 0) {
+        jmp_to_usercode(auxv_info.entry, (u64)stack);
+    }
+
+    if (argc <= 1) {
+        exit_with_error("missing program name\n");
+    }
+
+    exit_with_error("direct loading not implemented yet\n");
 }

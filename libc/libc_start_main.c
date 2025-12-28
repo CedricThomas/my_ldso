@@ -1,4 +1,5 @@
 #include "unistd.h"
+#include "stdio.h"
 
 void __libc_start_main(int (*main)(int, char **, char **),
 		       int argc, char **argv,

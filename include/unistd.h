@@ -12,11 +12,15 @@ struct iovec;
 
 i64 writev(int fd, const struct iovec *iov, int iovcnt);
 
-int open(const char *file, int flags, ...);
+#ifndef O_RDONLY
+    #define O_RDONLY 0
+#endif
 
+int open(const char *file, int flags, ...);
+int close(int fd);
 
 #ifndef MAP_FAILED
-#define MAP_FAILED ((void *)-1)
+    #define MAP_FAILED ((void *)-1)
 #endif
 
 void *mmap(void *addr, size_t len, int prot, int flags, int fd, i64 offset);

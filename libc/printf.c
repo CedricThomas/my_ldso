@@ -308,3 +308,18 @@ int printf(const char *fmt, ...)
 
 	return printed;
 }
+
+int dprintf(int fd, const char *fmt, ...)
+{
+	char printf_buf[1024];
+	va_list args;
+	int printed;
+
+	va_start(args, fmt);
+	printed = vsprintf(printf_buf, fmt, args);
+	va_end(args);
+
+	write(fd, printf_buf, strlen(printf_buf));
+
+	return printed;
+}

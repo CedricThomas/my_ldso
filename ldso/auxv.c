@@ -43,3 +43,25 @@ int check_ld_show_auxv(char **env)
     }
     return 0;
 }
+
+void load_auxv_info(auxv_info_t *auxv_info, ElfW(auxv_t) *auxv)
+{
+    for (; auxv->a_type != AT_NULL; auxv++) {
+        switch (auxv->a_type) {
+        case AT_PHDR:   auxv_info->phdr  = auxv->a_un.a_val; break;
+        case AT_PHENT:  auxv_info->phent = auxv->a_un.a_val; break;
+        case AT_PHNUM:  auxv_info->phnum = auxv->a_un.a_val; break;
+        case AT_BASE:   auxv_info->base  = auxv->a_un.a_val; break;
+        case AT_ENTRY:  auxv_info->entry = auxv->a_un.a_val; break;
+        }
+    }
+}
+
+ElfW(auxv_t) *find_auxv(char **envp)
+{
+    while (*envp != NULL)
+        envp++;
+    envp++;
+
+    return (ElfW(auxv_t) *)envp;
+}
