@@ -16,7 +16,7 @@ LDFLAGS = \
 
 LDSO_OBJS = \
 	    ldso/ldso_start.o \
-	    ldso/ldso.o \
+	    ldso/main.o \
 	    ldso/utils.o \
 	    ldso/errors.o \
 	    ldso/dso.o \
