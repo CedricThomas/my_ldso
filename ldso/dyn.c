@@ -3,7 +3,7 @@
 #include "types.h"
 
 
-ElfW(Dyn) *find_dynamic(auxv_info_t *auxv_info)
+ElfW(Dyn) *find_dynamic_in_auxv(auxv_info_t *auxv_info)
 {
     ElfW(Phdr) *ph = (ElfW(Phdr) *)auxv_info->phdr;
 

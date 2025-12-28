@@ -6,6 +6,7 @@
 #include <asm-generic/fcntl.h>
 
 #include "ldso.h"
+#include "dso_list.h"
 #include "types.h"
 #include "unistd.h"
 #include "stdio.h"
@@ -34,7 +35,7 @@ void ldso_main(u64 *stack)
     auxv_info_t auxv_info;
     load_auxv_info(&auxv_info, auxv);
 
-    ElfW(Dyn) *dyn = find_dynamic(&auxv_info);
+    ElfW(Dyn) *dyn = find_dynamic_in_auxv(&auxv_info);
     if (dyn == NULL) {
         exit_with_error("invalid dynamic section");
     }

@@ -51,7 +51,7 @@ ElfW(auxv_t) *find_auxv(char **envp);
 void load_auxv_info(auxv_info_t *auxv_info, ElfW(auxv_t) *auxv);
 
 // dyn.c
-ElfW(Dyn) *find_dynamic(auxv_info_t *auxv_info);
+ElfW(Dyn) *find_dynamic_in_auxv(auxv_info_t *auxv_info);
 dyn_info_t scan_dynamic(ElfW(Dyn) *dyn);
 
 // dso.c

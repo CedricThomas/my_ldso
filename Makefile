@@ -23,6 +23,7 @@ LDSO_OBJS = \
 	    ldso/auxv.o \
 	    ldso/dyn.o \
 		ldso/lib_path_search.o \
+		ldso/dso_list.o \
 		ldso/loader.o \
 		$(LIBC_STDIO_OBJS) \
 	    $(LIBC_STRING_OBJS) \
