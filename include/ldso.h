@@ -25,11 +25,10 @@ struct dyn_info {
 typedef struct dyn_info dyn_info_t;
 
 struct dso {
-    char **env;
+    const char *name;           /* DT_NEEDED string or basename */
+    const char *path;           /* resolved full path on disk */
     ElfW(Addr) base;            /* load address */
     ElfW(Dyn) *dynamic;         /* PT_DYNAMIC */
-
-    const char *ld_library_path; /* LD_LIBRARY_PATH env var */
     const char *dynstr;         /* DT_STRTAB */
     const char *rpath;          /* DT_RPATH */
     const char *runpath;        /* DT_RUNPATH */
@@ -38,6 +37,12 @@ struct dso {
 };
 
 typedef struct dso dso_t;
+
+struct loader {
+    char **env;                // environment array
+};
+
+typedef struct loader loader_t;
 
 // auxv.c
 void print_auxv(ElfW(auxv_t) *auxv);
@@ -50,18 +55,18 @@ ElfW(Dyn) *find_dynamic(auxv_info_t *auxv_info);
 dyn_info_t scan_dynamic(ElfW(Dyn) *dyn);
 
 // dso.c
-int load_dso(dso_t *obj, ElfW(Addr) base, ElfW(Dyn) *dyn, char **env);
+int load_dso(dso_t *obj, ElfW(Addr) base, ElfW(Dyn) *dyn);
 int check_ld_trace_loaded_objects(char **env);
-void print_loaded_objects(dso_t *obj);
+void print_loaded_objects(dso_t *obj, char **env);
 
 // lib_path_search.c
-char **build_search_paths(dso_t *obj);
+char **build_search_paths(dso_t *obj, char **env);
 int file_exists(const char *path);
 int resolve(char *result, size_t result_sz, char **paths, const char *name);
 size_t count_path_segments(const char *path);
 
 // utils.c
-char *get_env_var_from_dso(dso_t *obj, char *var);
+char *get_env_var(char **env, char *var);
 void free_tab(char **tab);
 
 

@@ -91,7 +91,7 @@ static size_t split_path_into_tab(const char *path, char **tab)
     return count;
 }
 
-char **build_search_paths(dso_t *obj)
+char **build_search_paths(dso_t *obj, char **env)
 {
     if (!obj) return NULL;
 
@@ -102,8 +102,9 @@ char **build_search_paths(dso_t *obj)
         total += count_path_segments(obj->rpath);
 
     /* Step 2: LD_LIBRARY_PATH */
-    if (obj->ld_library_path)
-        total += count_path_segments(obj->ld_library_path);
+    char *ld_library_path = get_env_var(env, "LD_LIBRARY_PATH");
+    if (ld_library_path)
+        total += count_path_segments(ld_library_path);
 
     /* Step 3: RUNPATH */
     if (obj->runpath)
@@ -123,8 +124,8 @@ char **build_search_paths(dso_t *obj)
     if (obj->rpath && !obj->runpath)
         offset += split_path_into_tab(obj->rpath, tab + offset);
 
-    if (obj->ld_library_path)
-        offset += split_path_into_tab(obj->ld_library_path, tab + offset);
+    if (ld_library_path)
+        offset += split_path_into_tab(ld_library_path, tab + offset);
 
     if (obj->runpath)
         offset += split_path_into_tab(obj->runpath, tab + offset);

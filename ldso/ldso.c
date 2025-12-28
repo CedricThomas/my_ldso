@@ -40,14 +40,15 @@ void ldso_main(u64 *stack)
     }
 
     dso_t obj;
-    if (load_dso(&obj, auxv_info.base, dyn, envp)) {
+    if (load_dso(&obj, auxv_info.base, dyn)) {
         exit_with_error("invalid dso object");
     }
 
+    // TODO: Load libraries
     
     // If LD_TRACE_LOADED_OBJECTS is set, print the loaded objects statuses
     if (check_ld_trace_loaded_objects(envp)) {
-        print_loaded_objects(&obj);
+        print_loaded_objects(&obj, envp);
         _exit(0);
     }
 

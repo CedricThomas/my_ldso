@@ -17,16 +17,14 @@ int check_ld_trace_loaded_objects(char **env)
     return 0;
 }
 
-int load_dso(dso_t *obj, ElfW(Addr) base, ElfW(Dyn) *dyn, char **envp)
+int load_dso(dso_t *obj, ElfW(Addr) base, ElfW(Dyn) *dyn)
 {
     dyn_info_t info = scan_dynamic(dyn);
 
     memset(obj, 0, sizeof(obj));
     obj->base = base;
     obj->dynamic = dyn;
-    obj->env = envp;
     obj->dynstr = (const char *)(info.dynstr);
-    obj->ld_library_path = get_env_var_from_dso(obj, "LD_LIBRARY_PATH");
     if (info.rpath_offset) {
         obj->rpath = obj->dynstr + info.rpath_offset; 
     } else if (info.runpath_offset) {
@@ -53,8 +51,8 @@ int load_dso(dso_t *obj, ElfW(Addr) base, ElfW(Dyn) *dyn, char **envp)
     return 0;
 }
 
-void print_loaded_objects(dso_t *obj) {
-    char **search_paths = build_search_paths(obj);
+void print_loaded_objects(dso_t *obj, char **env) {
+    char **search_paths = build_search_paths(obj, env);
     if (!search_paths)
         exit_with_error("cannot build libraries search path");
 
