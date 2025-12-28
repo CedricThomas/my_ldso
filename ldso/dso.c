@@ -1,3 +1,4 @@
+#include <limits.h>
 #include "ldso.h"
 #include "stdlib.h"
 #include "stdio.h"
@@ -16,29 +17,6 @@ int check_ld_trace_loaded_objects(char **env)
     return 0;
 }
 
-void print_loaded_objects(dso_t *obj) {
-    // stack-allocated strings
-    char s0[] = "./";
-    char s1[] = "/lib64/";
-    char s2[] = "/lib/";
-    char s3[] = "/usr/lib64/";
-    char s4[] = "/usr/lib/";
-
-    // intializing the default paths on the stack to avoid crashes 
-    char *search_paths[] = { s0, s1, s2, s3, s4, NULL };
-    char path[456];
-
-    for (size_t i = 0; i < obj->needed_size; i++) {
-        int found =  resolve(path, 456, search_paths, obj->needed[i]);
-        printf("\t%s", obj->needed[i]);
-        if (!found) {
-            printf(" => %s", path);
-        }
-        // FIXME: we should use the loaded lib address
-        printf(" (%p)\n", obj);
-    }
-}
-
 int load_dso(dso_t *obj, ElfW(Addr) base, ElfW(Dyn) *dyn, char **envp)
 {
     dyn_info_t info = scan_dynamic(dyn);
@@ -47,7 +25,13 @@ int load_dso(dso_t *obj, ElfW(Addr) base, ElfW(Dyn) *dyn, char **envp)
     obj->base = base;
     obj->dynamic = dyn;
     obj->env = envp;
-    obj->strtab = (const char *)(info.strtab);
+    obj->dynstr = (const char *)(info.dynstr);
+    obj->ld_library_path = get_env_var_from_dso(obj, "LD_LIBRARY_PATH");
+    if (info.rpath_offset) {
+        obj->rpath = obj->dynstr + info.rpath_offset; 
+    } else if (info.runpath_offset) {
+        obj->runpath = obj->dynstr + info.runpath_offset; 
+    }
     if (info.needed_size) {
         obj->needed = malloc(info.needed_size * sizeof(char *));
         if (!obj->needed) {
@@ -60,11 +44,39 @@ int load_dso(dso_t *obj, ElfW(Addr) base, ElfW(Dyn) *dyn, char **envp)
     for (; dyn->d_tag != DT_NULL; dyn++) {
         switch (dyn->d_tag) {
         case DT_NEEDED:
-            obj->needed[needed_index] = obj->strtab + dyn->d_un.d_val;
+            obj->needed[needed_index] = obj->dynstr + dyn->d_un.d_val;
             needed_index++;
             break;
         }
     }
 
     return 0;
+}
+
+void print_loaded_objects(dso_t *obj) {
+    char **search_paths = build_search_paths(obj);
+    if (!search_paths)
+        exit_with_error("cannot build libraries search path");
+
+    for (size_t i = 0; i < obj->needed_size; i++) {
+        char path[PATH_MAX];
+        int found = resolve(path, PATH_MAX, search_paths, obj->needed[i]);
+
+        printf("\t%s", obj->needed[i]);
+
+        if (!found) {
+            printf(" => %s", path);
+        } else {
+            printf(" => not found");
+        }
+
+         /* FIXME: lookup actual dso_t of resolved lib */
+        ElfW(Addr) addr = found ? obj->base : 0;
+        if (addr)
+            printf(" (%p)", (void *)addr);
+
+        printf("\n");
+    }
+
+    free_tab(search_paths);
 }

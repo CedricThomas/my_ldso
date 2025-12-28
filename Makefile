@@ -22,9 +22,11 @@ LDSO_OBJS = \
 	    ldso/dso.o \
 	    ldso/auxv.o \
 	    ldso/dyn.o \
+		ldso/lib_path_search.o \
 		$(LIBC_STDIO_OBJS) \
 	    $(LIBC_STRING_OBJS) \
 	    $(LIBC_UNISTD_OBJS) \
+	    libc/stdlib.o \
 	    libc/malloc.o \
 
 
@@ -46,6 +48,7 @@ LIBC_OBJS = \
 	    $(LIBC_STDIO_OBJS) \
 	    $(LIBC_STRING_OBJS) \
 	    $(LIBC_UNISTD_OBJS) \
+	    libc/stdlib.o \
 	    libc/malloc.o \
 
 

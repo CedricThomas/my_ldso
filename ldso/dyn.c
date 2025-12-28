@@ -24,7 +24,13 @@ dyn_info_t scan_dynamic(Elf64_Dyn *dyn)
             info.needed_size++;
             break;
         case DT_STRTAB:
-            info.strtab = dyn->d_un.d_ptr;
+            info.dynstr = dyn->d_un.d_ptr;
+            break;
+        case DT_RUNPATH:
+            info.runpath_offset = dyn->d_un.d_val;
+            break;
+        case DT_RPATH:
+            info.rpath_offset = dyn->d_un.d_val;
             break;
         }
     }

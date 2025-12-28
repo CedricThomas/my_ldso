@@ -1,59 +1,28 @@
-#include "unistd.h"
+#include "ldso.h"
 #include "stdio.h"
+#include "string.h"
+#include "stdlib.h"
 
-int file_exists(const char *path)
-{
-    int fd = open(path, O_RDONLY);
-    if (fd < 0)
-        return 0;
+char *get_env_var_from_dso(dso_t *obj, char *var) {
+    char **env = obj->env;
+    size_t var_len = strlen(var);
 
-    close(fd);
-    return 1;
+    for (; *env; env++) {
+        if (strncmp(*env, var, var_len) == 0 && (*env)[var_len] == '=') {
+            return *env + var_len + 1;
+        }
+            
+    }
+    return NULL;
 }
 
-int resolve(char *result, size_t result_size,
-            char **paths, const char *name)
+void free_tab(char **tab)
 {
-    if (!result || result_size == 0)
-        return 1;
+    if (!tab)
+        return;
 
-    for (int i = 0; paths[i]; i++) {
-        char *out = result;
-        size_t left = result_size - 1;
+    for (size_t i = 0; tab[i]; i++)
+        free(tab[i]);
 
-        const char *p = paths[i];
-        const char *n = name;
-
-        /* copy path */
-        while (*p && left) {
-            *out++ = *p++;
-            left--;
-        }
-
-        if (!left)
-            continue;
-
-        /* add '/' if needed */
-        if (out != result && out[-1] != '/') {
-            *out++ = '/';
-            left--;
-        }
-
-        if (!left)
-            continue;
-
-        /* copy name */
-        while (*n && left) {
-            *out++ = *n++;
-            left--;
-        }
-
-        *out = '\0';
-
-        if (file_exists(result))
-            return 0;
-    }
-
-    result[0] = '\0';
-    return 1;
+    free(tab);
 }

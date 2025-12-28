@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include "stdlib.h"
 
 size_t strlen(const char *s)
 {
@@ -47,4 +48,17 @@ int strncmp(const char *s1, const char *s2, size_t n)
         return 0;
 
     return (unsigned char)s1[i] - (unsigned char)s2[i];
+}
+
+size_t strlen_delim(const char *s, char delim)
+{
+    size_t i = 0;
+
+    if (!s)
+        return 0;
+
+    while (s[i] && s[i] != delim)
+        i++;
+
+    return i;
 }
