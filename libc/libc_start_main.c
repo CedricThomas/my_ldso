@@ -9,7 +9,6 @@ void __libc_start_main(int (*main)(int, char **, char **),
 	(void) dl_fini;
 
     // Using a local version of write so I can use it even without if I fail the relocation
-	puts("calling __libc_start_main");
 
 	if (csu_init)
         ((void (*)(void))csu_init)();
@@ -18,11 +17,8 @@ void __libc_start_main(int (*main)(int, char **, char **),
 
     int ret = main(argc, argv, envp);
 
-	puts("main ret");
-
 	if (csu_fini)
         ((void (*)(void))csu_fini)();
-	puts("csu_fini");
 
     _exit(ret);
 }

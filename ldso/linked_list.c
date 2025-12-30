@@ -1,15 +1,15 @@
-#include "dso_list.h"
+#include "ldso.h"
 #include "stdlib.h"
 #include "string.h"
 #include "stdio.h"
 
-void dso_list_init(dso_list_t *list) {
+void linked_list_init(linked_list_t *list) {
     list->head = list->tail = NULL;
     list->size = 0;
 }
 
-dso_node_t* dso_list_append(dso_list_t *list, dso_t obj) {
-    dso_node_t *node = malloc(sizeof(dso_node_t));
+linked_node_t* linked_list_append(linked_list_t *list, data_t obj) {
+    linked_node_t *node = malloc(sizeof(linked_node_t));
     if (!node) return NULL;
     node->data = obj;
     node->next = NULL;
@@ -23,8 +23,8 @@ dso_node_t* dso_list_append(dso_list_t *list, dso_t obj) {
     return node;
 }
 
-dso_node_t* dso_list_prepend(dso_list_t *list, dso_t obj) {
-    dso_node_t *node = malloc(sizeof(dso_node_t));
+linked_node_t* linked_list_prepend(linked_list_t *list, data_t obj) {
+    linked_node_t *node = malloc(sizeof(linked_node_t));
     if (!node) return NULL;
     node->data = obj;
     node->prev = NULL;
@@ -38,10 +38,10 @@ dso_node_t* dso_list_prepend(dso_list_t *list, dso_t obj) {
     return node;
 }
 
-dso_node_t* dso_list_insert_after(dso_list_t *list, dso_node_t *node, dso_t obj) {
-    if (!node) return dso_list_append(list, obj);
+linked_node_t* linked_list_insert_after(linked_list_t *list, linked_node_t *node, data_t obj) {
+    if (!node) return linked_list_append(list, obj);
 
-    dso_node_t *new_node = malloc(sizeof(dso_node_t));
+    linked_node_t *new_node = malloc(sizeof(linked_node_t));
     if (!new_node) return NULL;
     new_node->data = obj;
     new_node->prev = node;
@@ -55,10 +55,10 @@ dso_node_t* dso_list_insert_after(dso_list_t *list, dso_node_t *node, dso_t obj)
     return new_node;
 }
 
-dso_node_t* dso_list_insert_before(dso_list_t *list, dso_node_t *node, dso_t obj) {
-    if (!node) return dso_list_prepend(list, obj);
+linked_node_t* linked_list_insert_before(linked_list_t *list, linked_node_t *node, data_t obj) {
+    if (!node) return linked_list_prepend(list, obj);
 
-    dso_node_t *new_node = malloc(sizeof(dso_node_t));
+    linked_node_t *new_node = malloc(sizeof(linked_node_t));
     if (!new_node) return NULL;
     new_node->data = obj;
     new_node->next = node;
@@ -72,7 +72,7 @@ dso_node_t* dso_list_insert_before(dso_list_t *list, dso_node_t *node, dso_t obj
     return new_node;
 }
 
-void dso_list_delete(dso_list_t *list, dso_node_t *node) {
+void linked_list_delete(linked_list_t *list, linked_node_t *node) {
     if (!node) return;
 
     if (node->prev) node->prev->next = node->next;
@@ -85,26 +85,26 @@ void dso_list_delete(dso_list_t *list, dso_node_t *node) {
     list->size--;
 }
 
-dso_t dso_list_pop_front(dso_list_t *list) {
-    if (!list->head) return (dso_t){0};
-    dso_node_t *node = list->head;
-    dso_t data = node->data;
-    dso_list_delete(list, node);
+data_t linked_list_pop_front(linked_list_t *list) {
+    if (!list->head) return (data_t){0};
+    linked_node_t *node = list->head;
+    data_t data = node->data;
+    linked_list_delete(list, node);
     return data;
 }
 
-dso_t dso_list_pop_back(dso_list_t *list) {
-    if (!list->tail) return (dso_t){0};
-    dso_node_t *node = list->tail;
-    dso_t data = node->data;
-    dso_list_delete(list, node);
+data_t linked_list_pop_back(linked_list_t *list) {
+    if (!list->tail) return (data_t){0};
+    linked_node_t *node = list->tail;
+    data_t data = node->data;
+    linked_list_delete(list, node);
     return data;
 }
 
-void dso_list_clear(dso_list_t *list) {
-    dso_node_t *cur = list->head;
+void linked_list_clear(linked_list_t *list) {
+    linked_node_t *cur = list->head;
     while (cur) {
-        dso_node_t *next = cur->next;
+        linked_node_t *next = cur->next;
         free(cur);
         cur = next;
     }
@@ -112,6 +112,6 @@ void dso_list_clear(dso_list_t *list) {
     list->size = 0;
 }
 
-void dso_list_free(dso_list_t *list) {
-    dso_list_clear(list);
+void linked_list_free(linked_list_t *list) {
+    linked_list_clear(list);
 }

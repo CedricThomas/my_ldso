@@ -62,3 +62,11 @@ void *mremap(void *old_address, size_t old_size, size_t new_size, int flags, ...
 
 	return (void *)rc;
 }
+
+ssize_t read(int fd, void *buf, size_t count) {
+	return syscall3(__NR_read, fd, (u64)buf, count);
+}
+
+long lseek(int fd, long offset, int whence) {
+    return syscall3(__NR_lseek, fd, offset, whence);
+}

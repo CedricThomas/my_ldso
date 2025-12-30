@@ -111,8 +111,8 @@ char **build_search_paths(dso_t *obj, char **env)
         total += count_path_segments(obj->runpath);
 
     /* Step 4: cache (ignored here) */
-    /* Step 5: default paths */
-    total += 2;
+    /* Step 5: default paths ".", "/lib", "/usr/lib" */
+    total += 3;
 
     /* Allocate array */
     char **tab = malloc((total + 1) * sizeof(char *)); // +1 for final NULL
@@ -130,6 +130,7 @@ char **build_search_paths(dso_t *obj, char **env)
     if (obj->runpath)
         offset += split_path_into_tab(obj->runpath, tab + offset);
 
+    tab[offset++] = strdup(".");
     tab[offset++] = strdup("/lib");
     tab[offset++] = strdup("/usr/lib");
 

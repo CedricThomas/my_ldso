@@ -14,17 +14,13 @@ LDFLAGS = \
 	  -nostdlib \
 	  -Wl,-z,norelro \
 
-LDSO_OBJS = \
+LDSO_SRC =	$(shell find ./ldso -name '*.c')
+
+LDSO_OBJS = $(addprefix ./ldso/,$(LDSO_SRC:./ldso/%.c=%.o))
+
+LDSO_FULL_OBJS = \
 	    ldso/ldso_start.o \
-	    ldso/main.o \
-	    ldso/utils.o \
-	    ldso/errors.o \
-	    ldso/dso.o \
-	    ldso/auxv.o \
-	    ldso/dyn.o \
-		ldso/lib_path_search.o \
-		ldso/dso_list.o \
-		ldso/loader.o \
+		$(LDSO_OBJS) \
 		$(LIBC_STDIO_OBJS) \
 	    $(LIBC_STRING_OBJS) \
 	    $(LIBC_UNISTD_OBJS) \
@@ -105,7 +101,7 @@ libuseless.so: $(USELESS_OBJS)
 
 ld.so: CFLAGS += -fPIC
 ld.so: LDFLAGS += -Wl,--version-script,ldso/exported-symbols.map -Wl,-soname,ld.so
-ld.so: $(LDSO_OBJS)
+ld.so: $(LDSO_FULL_OBJS)
 
 libc/printf.o: CPPFLAGS += -Iinclude/printf
 libc/malloc.o: CPPFLAGS += $(MALLOC_CPPFLAGS)
@@ -114,7 +110,7 @@ libc/malloc.o: CPPFLAGS += $(MALLOC_CPPFLAGS)
 	$(LINK.o) -shared $^ $(LDLIBS) -o $@
 
 clean:
-	rm -f $(LIBC_OBJS) $(LDSO_OBJS) $(USELESS_OBJS) libc/crt0.o
+	rm -f $(LIBC_OBJS) $(LDSO_FULL_OBJS) $(USELESS_OBJS) libc/crt0.o
 
 fclean: clean
 	rm -f $(TEST_LIBS) ld.so $(TESTS)
