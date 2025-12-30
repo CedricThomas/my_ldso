@@ -90,6 +90,7 @@ linked_node_t* linked_list_insert_before(linked_list_t *list, linked_node_t *nod
 void linked_list_delete(linked_list_t *list, linked_node_t *node);
 data_t linked_list_pop_front(linked_list_t *list);
 data_t linked_list_pop_back(linked_list_t *list);
+linked_node_t *linked_list_search(linked_list_t *list, data_t *needle, int (*test)(data_t *, data_t *));
 void linked_list_clear(linked_list_t *list);
 void linked_list_free(linked_list_t *list);
 static inline size_t linked_list_size(linked_list_t *list) { return list->size; }
@@ -113,10 +114,10 @@ dyn_info_t scan_dynamic(ElfW(Dyn) *dyn);
 
 // dso.c
 int check_ld_trace_loaded_objects(char **env);
-linked_list_t *build_dependencies_list(dso_t *obj, char **env);
-void print_loaded_objects(dso_t *obj, char **env);
+void print_link_map(linked_list_t *map);
 void load_dso_from_auxv(dso_t *obj, auxv_info_t *auxv, char *path, char *name);
 void load_dso_from_path(dso_t *obj, const char *path, const char *name);
+void resolve_dependencies_recursive(linked_list_t *map, dso_t *obj, char **env);
 
 // lib_path_search.c
 char **build_search_paths(dso_t *obj, char **env);

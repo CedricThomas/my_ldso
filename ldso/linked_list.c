@@ -115,3 +115,16 @@ void linked_list_clear(linked_list_t *list) {
 void linked_list_free(linked_list_t *list) {
     linked_list_clear(list);
 }
+
+linked_node_t *linked_list_search(linked_list_t *list, data_t *needle, int (*test)(data_t *, data_t *)) {
+    if (list == NULL)
+        return NULL;
+    linked_node_t *cur = list->head;
+    while (cur) {
+        if (test(needle, &cur->data)) {
+            return cur;
+        }
+        cur = cur->next;
+    }
+    return NULL;
+}

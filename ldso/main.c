@@ -40,19 +40,21 @@ void ldso_main(u64 *stack)
     load_auxv_info(&auxv_info, auxv);
 
     dso_t obj;
+    // TODO: allow to load from argv
     load_dso_from_auxv(&obj, &auxv_info,  argv[0], argv[0]);
 
     // TODO: Load libraries
-    linked_list_t *dependencies = build_dependencies_list(&obj, envp);
-    linked_list_for_each(dependencies, iter) {
-        dso_t lib;
-        load_dso_from_path(&lib, iter->data.path, iter->data.name);
-        print_loaded_objects(&lib, envp);
-    }
+    linked_list_t dependencies;
+    linked_list_init(&dependencies);
+    resolve_dependencies_recursive(
+        &dependencies,
+        &obj,
+        envp
+    );
     
     // If LD_TRACE_LOADED_OBJECTS is set, print the loaded objects statuses
     if (check_ld_trace_loaded_objects(envp)) {
-        print_loaded_objects(&obj, envp);
+        print_link_map(&dependencies);
         _exit(0);
     }
 

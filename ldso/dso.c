@@ -17,33 +17,22 @@ int check_ld_trace_loaded_objects(char **env) {
     return 0;
 }
 
-// TODO: replace by a print of linkmap once it is fully implemented
-void print_loaded_objects(dso_t *obj, char **env) {
-    char **search_paths = build_search_paths(obj, env);
-    if (!search_paths)
-        exit_with_error("cannot build libraries search path");
+void print_link_map(linked_list_t *map) {
+    if (!map) return;
 
-    for (size_t i = 0; i < obj->needed_size; i++) {
-        char path[PATH_MAX];
-        int found = resolve(path, PATH_MAX, search_paths, obj->needed[i]);
+    linked_list_for_each(map, iter) {
+        dso_t *obj = &iter->data;
 
-        printf("\t%s", obj->needed[i]);
-
-        if (!found) {
-            printf(" => %s", path);
+        if (obj->path) {
+            printf("%s => %s (0x%lx)\n",
+                   iter->data.name ? iter->data.name : "(unknown)",
+                   obj->path,
+                   obj->base);
         } else {
-            printf(" => not found");
+            printf("%s => not found\n",
+                   iter->data.name ? iter->data.name : "(unknown)");
         }
-
-         /* FIXME: lookup actual dso_t of resolved lib */
-        ElfW(Addr) addr = found ? obj->base : 0;
-        if (addr)
-            printf(" (%p)", (void *)addr);
-
-        printf("\n");
     }
-
-    free_tab(search_paths);
 }
 
 static void load_dso_from_dynamic(dso_t *obj, ElfW(Addr) base, ElfW(Dyn) *dyn) {
@@ -98,8 +87,7 @@ void load_dso_from_auxv(dso_t *obj, auxv_info_t *auxv, char *path, char *name) {
     load_dso_from_dynamic(obj, auxv->base, dyn);
 }
 
-void load_dso_from_path(dso_t *obj, const char *path, const char *name)
-{
+void load_dso_from_path(dso_t *obj, const char *path, const char *name) {
     obj->path   = path;
     obj->name   = name;
     obj->origin = DSO_LOADER_MAPPED;
@@ -229,30 +217,51 @@ void load_dso_from_path(dso_t *obj, const char *path, const char *name)
     load_dso_from_dynamic(obj, base, dynamic);
 }
 
-linked_list_t *build_dependencies_list(dso_t *obj, char **env) {
-    linked_list_t *dependencies;
-    
-    dependencies = malloc(sizeof(linked_list_t));
-    if (!dependencies) 
-        exit_with_error("cannot build libraries list");
+static int dso_match(data_t *a, data_t *b)
+{
+    if (a->path && b->path &&
+        strcmp(a->path, b->path) == 0)
+        return 1;
 
+    if (a->name && b->name &&
+        strcmp(a->name, b->name) == 0)
+        return 1;
 
+    return 0;
+}
+
+void resolve_dependencies_recursive(
+    linked_list_t *map,
+    dso_t *obj,
+    char **env
+) {
     char **search_paths = build_search_paths(obj, env);
     if (!search_paths)
         exit_with_error("cannot build libraries search path");
 
     for (size_t i = 0; i < obj->needed_size; i++) {
         data_t lib_data = {0};
-        char path[PATH_MAX];
-        int found = resolve(path, PATH_MAX, search_paths, obj->needed[i]);
-
+        char resolved_path[PATH_MAX];
+        int found = resolve(resolved_path, PATH_MAX, search_paths, obj->needed[i]);
         if (!found) {
-            lib_data.path = strdup(path);
+            lib_data.path = strdup(resolved_path);
         }
         lib_data.name = strdup(obj->needed[i]);
-        if (!lib_data.name || !linked_list_append(dependencies, lib_data))
-            exit_with_error("cannot build libraries metadata");
+
+        if (linked_list_search(map, &lib_data, dso_match)) {
+            continue; /* already in link map */
+        }
+
+        /* Load the DSO */
+        load_dso_from_path(&lib_data, lib_data.path, lib_data.name);
+
+        if (!linked_list_append(map, lib_data)) {
+            exit_with_error("cannot insert dependency");
+        }
+
+        /* Recurse */
+        resolve_dependencies_recursive(map, &lib_data, env);
     }
+
     free_tab(search_paths);
-    return dependencies;
 }
