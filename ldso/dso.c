@@ -22,6 +22,10 @@ void print_link_map(linked_list_t *map) {
 
     linked_list_for_each(map, iter) {
         dso_t *obj = &iter->data;
+        
+        if (obj->origin == DSO_KERNEL_MAPPED) {
+            continue;
+        }
 
         if (obj->path) {
             printf("%s => %s (0x%lx)\n",
@@ -36,7 +40,7 @@ void print_link_map(linked_list_t *map) {
 }
 
 static void load_dso_from_dynamic(dso_t *obj, ElfW(Addr) base, ElfW(Dyn) *dyn) {
-    dyn_info_t info = scan_dynamic(dyn);
+    dso_dyn_info_t info = parse_dynamic_dso_info(dyn);
 
     obj->base = base;
     obj->ehdr = (ElfW(Ehdr) *)base;

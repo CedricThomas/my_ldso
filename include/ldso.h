@@ -20,15 +20,16 @@ struct auxv_info {
 
 typedef struct auxv_info auxv_info_t;
 
-struct dyn_info {
+struct dso_dyn_info {
     size_t needed_size;
+    // Raw dynstr pointer without bias translation
     ElfW(Addr) dynstr;
     size_t rpath_offset;
     size_t runpath_offset;
 
 };
 
-typedef struct dyn_info dyn_info_t;
+typedef struct dso_dyn_info dso_dyn_info_t;
 
 typedef enum {
     DSO_KERNEL_MAPPED,   // binaire principal
@@ -81,6 +82,28 @@ typedef struct {
     size_t size;
 } linked_list_t;
 
+/* dynamic segment info needed for a relocation */
+typedef struct relocation_dyn_info {
+    /* relocation tables */
+    ElfW(Rela) *rela;
+    size_t      rela_sz;
+
+    ElfW(Rel)  *rel;
+    size_t      rel_sz;
+
+    ElfW(Rela) *jmprel;
+    size_t      jmprel_sz;
+
+    /* symbols + strings */
+    ElfW(Sym)  *dynsym;
+    size_t      syment;     /* size of a symbol entry */
+    size_t      dynsym_sz;  /* size of dynsym in bytes */
+    const char *dynstr;     /* string table */
+    
+    /* misc */
+    int         plt_is_rela; /* DT_PLTREL == DT_RELA ? */
+} relocation_dyn_info_t;
+
 // linked_list.c
 void linked_list_init(linked_list_t *list);
 linked_node_t* linked_list_append(linked_list_t *list, data_t data);
@@ -110,7 +133,8 @@ void load_auxv_info(auxv_info_t *auxv_info, ElfW(auxv_t) *auxv);
 
 // dyn.c
 ElfW(Dyn) *find_dynamic_in_auxv(auxv_info_t *auxv_info);
-dyn_info_t scan_dynamic(ElfW(Dyn) *dyn);
+dso_dyn_info_t parse_dynamic_dso_info(ElfW(Dyn) *dyn);
+void parse_dynamic_reloc_info(dso_t *dso, relocation_dyn_info_t *info);
 
 // dso.c
 int check_ld_trace_loaded_objects(char **env);
@@ -134,5 +158,8 @@ void free_tab(char **tab);
 void exit_with_error(const char *msg);
 void exit_with_errorf(const char *fmt, ...);
 void set_program_name(const char *value);
+
+// relocation.c
+void relocate_dso(dso_t *dso, linked_list_t *link_map);
 
 #endif /* !LDSO_H */
