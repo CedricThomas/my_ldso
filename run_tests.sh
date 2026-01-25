@@ -48,3 +48,31 @@ EOF
 )"
 run_test "test direct libs" "$expected_output" ./test-libs 1 2 3
 
+
+expected_output="$(cat <<'EOF'
+./test-standalone
+1
+2
+3
+EOF
+)"
+run_test "test indirect standalone" "$expected_output" ./ld.so ./test-standalone 1 2 3
+
+expected_output="$(cat <<'EOF'
+./test-onelib
+1
+2
+3
+EOF
+)"
+run_test "test indirect one lib" "$expected_output" ./ld.so ./test-onelib 1 2 3
+
+expected_output="$(cat <<'EOF'
+./test-libs
+1
+2
+3
+EOF
+)"
+run_test "test indirect libs" "$expected_output" ./ld.so ./test-libs 1 2 3
+
