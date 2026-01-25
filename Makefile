@@ -109,6 +109,13 @@ libc/malloc.o: CPPFLAGS += $(MALLOC_CPPFLAGS)
 %.so:
 	$(LINK.o) -shared $^ $(LDLIBS) -o $@
 
+test: 
+	@$(MAKE) --no-print-directory --silent all
+	./run_tests.sh
+
+watch-test:
+	@reflex -r '\.c$$' -- make --no-print-directory test
+
 clean:
 	rm -f $(LIBC_OBJS) $(LDSO_FULL_OBJS) $(USELESS_OBJS) libc/crt0.o
 
