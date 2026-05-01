@@ -39,26 +39,14 @@ void ldso_main(u64 *stack)
 
     dso_t bin;
     auxv_info_t auxv_info = {0};
+    load_auxv_info(&auxv_info, auxv);
 
-    /* Detect direct mode: ./ld.so ./target_bin ...
-     * argv[0] ends with "ld.so" and there are extra args */
-    int direct_mode = 0;
-    if (argc > 1) {
-        size_t slen = 0;
-        while (argv[0][slen]) slen++;
-        if (slen >= 5) {
-            const char *suffix = argv[0] + slen - 5;
-            if (suffix[0] == 'l' && suffix[1] == 'd' && suffix[2] == '.' &&
-                suffix[3] == 's' && suffix[4] == 'o')
-                direct_mode = 1;
-        }
-    }
-
+    /* Direct mode: no interpreter (AT_BASE == 0) and extra args present */
+    int direct_mode = (auxv_info.base == 0 && argc > 1);
     if (direct_mode) {
         argv[0] = argv[1];
         load_dso_from_path(&bin, argv[0], argv[0]);
     } else {
-        load_auxv_info(&auxv_info, auxv);
         load_dso_from_auxv(&bin, &auxv_info, argv[0], argv[0]);
     }
 
