@@ -1,5 +1,4 @@
 	.global _start
-	.hidden _start
 	.type _start, @function
 _start:
 	xor %ebp, %ebp
