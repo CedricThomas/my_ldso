@@ -147,17 +147,21 @@ void load_dso_from_path(dso_t *obj, const char *path, const char *name) {
 
     size_t map_size = max_vaddr - min_vaddr;
 
-    /* Reserve address space */
-    void *mapping = mmap(NULL,
-                         map_size,
-                         PROT_NONE,
-                         MAP_PRIVATE | MAP_ANONYMOUS,
-                         -1,
-                         0);
-    if (mapping == MAP_FAILED)
-        exit_with_error("failed to reserve address space");
-
-    ElfW(Addr) base = (ElfW(Addr))mapping - min_vaddr;
+    /* For EXEC binaries (min_vaddr != 0), map at preferred addresses.
+     * For shared libraries (min_vaddr == 0), reserve address space first.
+     * In both cases, base = ELF header address so obj->ehdr = base works. */
+    ElfW(Addr) base;
+    if (min_vaddr != 0) {
+        /* EXEC: use preferred addresses directly */
+        base = min_vaddr;
+    } else {
+        /* Shared lib: let kernel choose address */
+        void *mapping = mmap(NULL, map_size, PROT_NONE,
+                             MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if (mapping == MAP_FAILED)
+            exit_with_error("failed to reserve address space");
+        base = (ElfW(Addr))mapping;
+    }
 
     /* Map PT_LOAD segments */
     for (int i = 0; i < ehdr.e_phnum; i++) {
@@ -178,10 +182,16 @@ void load_dso_from_path(dso_t *obj, const char *path, const char *name) {
         if (p->p_flags & PF_W) prot |= PROT_WRITE;
         if (p->p_flags & PF_X) prot |= PROT_EXEC;
 
+        /* EXEC maps at preferred addresses, shared at base+vaddr */
+        ElfW(Addr) seg_map = (min_vaddr != 0) ? seg_start : (base + seg_start);
+        ElfW(Addr) file_map = (min_vaddr != 0) ? file_end : (base + file_end);
+        ElfW(Addr) bss_map = (min_vaddr != 0) ? file_end : (base + file_end);
+        ElfW(Addr) bss_end = (min_vaddr != 0) ? seg_end : (base + seg_end);
+
         /* File-backed part */
         if (p->p_filesz > 0) {
-            if (mmap((void *)(base + seg_start),
-                     file_end - seg_start,
+            if (mmap((void *)seg_map,
+                     file_map - seg_map,
                      prot,
                      MAP_PRIVATE | MAP_FIXED,
                      fd,
@@ -191,8 +201,8 @@ void load_dso_from_path(dso_t *obj, const char *path, const char *name) {
 
         /* Zero-filled (.bss) */
         if (seg_end > file_end) {
-            if (mmap((void *)(base + file_end),
-                     seg_end - file_end,
+            if (mmap((void *)bss_map,
+                     bss_end - bss_map,
                      prot,
                      MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS,
                      -1,
@@ -203,10 +213,11 @@ void load_dso_from_path(dso_t *obj, const char *path, const char *name) {
 
     /* Locate PT_DYNAMIC */
     ElfW(Dyn) *dynamic = NULL;
+    ElfW(Addr) bias = base - min_vaddr;
 
     for (int i = 0; i < ehdr.e_phnum; i++) {
         if (phdrs[i].p_type == PT_DYNAMIC) {
-            dynamic = (ElfW(Dyn) *)(base + phdrs[i].p_vaddr);
+            dynamic = (ElfW(Dyn) *)(bias + phdrs[i].p_vaddr);
             break;
         }
     }
