@@ -84,11 +84,25 @@ void load_dso_from_auxv(dso_t *obj, auxv_info_t *auxv, char *path, char *name) {
     ElfW(Dyn) *dyn = find_dynamic_in_auxv(auxv);
     if (!dyn)
         exit_with_error("invalid dynamic section");
+
+    /* Compute exec_base: the ELF header is at file offset 0, the phdr
+     * table at file offset e_phoff (= sizeof(ElfW(Ehdr)) in practice).
+     * Since AT_PHDR is the mapped address of the phdr table, the ELF
+     * header (and thus the EXEC base) is at: AT_PHDR - sizeof(Ehdr). */
+    ElfW(Addr) exec_base = auxv->phdr - sizeof(ElfW(Ehdr));
+    ElfW(Ehdr) *ehdr = (ElfW(Ehdr) *)exec_base;
+    if (memcmp(ehdr->e_ident, ELFMAG, SELFMAG) == 0)
+        exec_base = auxv->phdr - ehdr->e_phoff;
+
+    /* For ET_EXEC, phdr p_vaddr IS the absolute mapped address
+     * (kernel maps at preferred addresses). So dyn is already absolute. */
+    ElfW(Addr) dyn_addr = (ElfW(Addr))dyn;
+
     memset(obj, 0, sizeof(dso_t));
     obj->origin = DSO_KERNEL_MAPPED;
-    obj->path = path; 
+    obj->path = path;
     obj->name = name;
-    load_dso_from_dynamic(obj, auxv->base, dyn);
+    load_dso_from_dynamic(obj, exec_base, (ElfW(Dyn) *)dyn_addr);
 }
 
 void load_dso_from_path(dso_t *obj, const char *path, const char *name) {
