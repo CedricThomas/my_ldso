@@ -245,6 +245,31 @@ static int dso_match(data_t *a, data_t *b)
     return 0;
 }
 
+void free_dso(dso_t *obj)
+{
+    if (!obj)
+        return;
+
+    if (obj->needed) {
+        free(obj->needed);
+        obj->needed = NULL;
+    }
+
+    /* Only free path/name for loader-mapped DSOs (strdup'd in
+     * resolve_dependencies_recursive). Kernel-mapped main binary
+     * points to argv[0] — must not be freed. */
+    if (obj->origin == DSO_LOADER_MAPPED) {
+        if (obj->path) {
+            free((void *)obj->path);
+            obj->path = NULL;
+        }
+        if (obj->name) {
+            free((void *)obj->name);
+            obj->name = NULL;
+        }
+    }
+}
+
 void resolve_dependencies_recursive(
     linked_list_t *map,
     dso_t *obj,
@@ -258,12 +283,16 @@ void resolve_dependencies_recursive(
         data_t lib_data = {0};
         char resolved_path[PATH_MAX];
         int found = resolve(resolved_path, PATH_MAX, search_paths, obj->needed[i]);
-        if (!found) {
-            lib_data.path = strdup(resolved_path);
+        if (found) {
+            printf("cannot find library %s\n", obj->needed[i]);
+            exit_with_error("library not found");
         }
+        lib_data.path = strdup(resolved_path);
         lib_data.name = strdup(obj->needed[i]);
 
         if (linked_list_search(map, &lib_data, dso_match)) {
+            free((void *)lib_data.path);
+            free((void *)lib_data.name);
             continue; /* already in link map */
         }
 

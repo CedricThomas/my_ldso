@@ -139,6 +139,7 @@ void print_link_map(linked_list_t *map);
 void load_dso_from_auxv(dso_t *obj, auxv_info_t *auxv, char *path, char *name);
 void load_dso_from_path(dso_t *obj, const char *path, const char *name);
 void resolve_dependencies_recursive(linked_list_t *map, dso_t *obj, char **env);
+void free_dso(dso_t *obj);
 
 // lib_path_search.c
 char **build_search_paths(dso_t *obj, char **env);
