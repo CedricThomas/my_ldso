@@ -1,6 +1,7 @@
 #include "ldso.h"
 #include "string.h"
 #include "stdio.h"
+#include "stdint.h"
 
 static ElfW(Addr) resolve_symbol(const char *name, linked_list_t *map) {
     const size_t MAX_SYMS = 4096; // safety cap
@@ -60,6 +61,34 @@ static void apply_rela_table(
             *where = dso->base + r->r_addend;
             break;
 
+        case R_X86_64_PC32: {
+            ElfW(Sym) *s = &info->dynsym[sym];
+            ElfW(Addr) loc = (s->st_shndx == SHN_UNDEF) ? 0 : (ElfW(Addr))dso_resolve_ptr(dso, s->st_value);
+            *where = loc + r->r_addend - (ElfW(Addr))where;
+            break;
+        }
+
+        case R_X86_64_64: {
+            ElfW(Sym) *s = &info->dynsym[sym];
+            ElfW(Addr) loc = (s->st_shndx == SHN_UNDEF) ? 0 : (ElfW(Addr))dso_resolve_ptr(dso, s->st_value);
+            *where = loc + r->r_addend;
+            break;
+        }
+
+        case R_X86_64_32: {
+            ElfW(Sym) *s = &info->dynsym[sym];
+            ElfW(Addr) loc = (s->st_shndx == SHN_UNDEF) ? 0 : (ElfW(Addr))dso_resolve_ptr(dso, s->st_value);
+            *(uint32_t *)where = (uint32_t)(loc + r->r_addend);
+            break;
+        }
+
+        case R_X86_64_32S: {
+            ElfW(Sym) *s = &info->dynsym[sym];
+            ElfW(Addr) loc = (s->st_shndx == SHN_UNDEF) ? 0 : (ElfW(Addr))dso_resolve_ptr(dso, s->st_value);
+            *(int32_t *)where = (int32_t)(loc + r->r_addend);
+            break;
+        }
+
         case R_X86_64_GLOB_DAT:
         case R_X86_64_JUMP_SLOT: {
             ElfW(Sym) *s = &info->dynsym[sym];
@@ -75,8 +104,7 @@ static void apply_rela_table(
         }
 
         default:
-            dprintf(2, "unsupported relocation");
-            /* relocation non supportée */
+            exit_with_errorf("unsupported relocation type %u at %p", type, where);
             break;
         }
     }
@@ -106,6 +134,20 @@ static void apply_rel_table(
             *where += dso->base;
             break;
 
+        case R_X86_64_PC32: {
+            ElfW(Sym) *s = &info->dynsym[sym];
+            ElfW(Addr) loc = (s->st_shndx == SHN_UNDEF) ? 0 : (ElfW(Addr))dso_resolve_ptr(dso, s->st_value);
+            *where = loc + *(int32_t *)where - (ElfW(Addr))where;
+            break;
+        }
+
+        case R_X86_64_32: {
+            ElfW(Sym) *s = &info->dynsym[sym];
+            ElfW(Addr) loc = (s->st_shndx == SHN_UNDEF) ? 0 : (ElfW(Addr))dso_resolve_ptr(dso, s->st_value);
+            *(uint32_t *)where = (uint32_t)(loc + *(int32_t *)where);
+            break;
+        }
+
         case R_X86_64_GLOB_DAT:
         case R_X86_64_JUMP_SLOT: {
             ElfW(Sym) *s = &info->dynsym[sym];
@@ -117,6 +159,7 @@ static void apply_rel_table(
         }
 
         default:
+            exit_with_errorf("unsupported relocation type %u at %p", type, where);
             break;
         }
     }
