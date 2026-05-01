@@ -10,8 +10,8 @@
 
 /*
  * Oh, it's a waste of space, but oh-so-yummy for debugging.  This
- * version of printf() does not include 64-bit support.  "Live with
- * it."
+ * version of printf() supports 64-bit via 'l' (native long)
+ * and 'll' (long long) qualifiers.
  *
  */
 
@@ -189,6 +189,11 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 		if (*fmt == 'h' || *fmt == 'l' || *fmt == 'L') {
 			qualifier = *fmt;
 			++fmt;
+			/* detect 'll' — consecutive 'l' chars for long long */
+			if (qualifier == 'l' && *fmt == 'l') {
+				qualifier = '|'; /* distinct sentinel for 'll' */
+				++fmt;
+			}
 		}
 
 		/* default base */
@@ -269,6 +274,8 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 		}
 		if (qualifier == 'l')
 			num = va_arg(args, unsigned long);
+		else if (qualifier == '|')
+			num = (unsigned long long)va_arg(args, unsigned long long);
 		else if (qualifier == 'h') {
 			num = (unsigned short)va_arg(args, int);
 			if (flags & SIGN)
@@ -283,6 +290,9 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 	return str - buf;
 }
 
+/* forward declaration — printf() calls dprintf() for truncation warnings */
+static int dprintf(int fd, const char *fmt, ...);
+
 int sprintf(char *buf, const char *fmt, ...)
 {
 	va_list args;
@@ -296,13 +306,17 @@ int sprintf(char *buf, const char *fmt, ...)
 
 int printf(const char *fmt, ...)
 {
-	char printf_buf[1024];
+	char printf_buf[4096];
 	va_list args;
 	int printed;
 
 	va_start(args, fmt);
 	printed = vsprintf(printf_buf, fmt, args);
 	va_end(args);
+
+	if (printed >= (int)sizeof(printf_buf)) {
+		dprintf(2, "[printf] output truncated (%d chars)\n", printed);
+	}
 
 	puts(printf_buf);
 
@@ -311,13 +325,17 @@ int printf(const char *fmt, ...)
 
 int dprintf(int fd, const char *fmt, ...)
 {
-	char printf_buf[1024];
+	char printf_buf[4096];
 	va_list args;
 	int printed;
 
 	va_start(args, fmt);
 	printed = vsprintf(printf_buf, fmt, args);
 	va_end(args);
+
+	if (printed >= (int)sizeof(printf_buf)) {
+		write(2, "[dprintf] output truncated\n", 26);
+	}
 
 	write(fd, printf_buf, strlen(printf_buf));
 
