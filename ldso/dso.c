@@ -187,7 +187,6 @@ void load_dso_from_path(dso_t *obj, const char *path, const char *name) {
         ElfW(Addr) seg_vaddr = p->p_vaddr;
         ElfW(Addr) seg_start = PAGE_DOWN(seg_vaddr);
         ElfW(Addr) seg_end   = PAGE_UP(seg_vaddr + p->p_memsz);
-        ElfW(Addr) file_end  = PAGE_UP(seg_vaddr + p->p_filesz);
 
         ElfW(Off) file_offset = PAGE_DOWN(p->p_offset);
 
@@ -198,30 +197,46 @@ void load_dso_from_path(dso_t *obj, const char *path, const char *name) {
 
         /* EXEC maps at preferred addresses, shared at base+vaddr */
         ElfW(Addr) seg_map = (min_vaddr != 0) ? seg_start : (base + seg_start);
-        ElfW(Addr) file_map = (min_vaddr != 0) ? file_end : (base + file_end);
-        ElfW(Addr) bss_map = (min_vaddr != 0) ? file_end : (base + file_end);
-        ElfW(Addr) bss_end = (min_vaddr != 0) ? seg_end : (base + seg_end);
 
-        /* File-backed part */
+        /* Map segment in three steps:
+         * 1) Map the entire segment as anonymous (within PROT_NONE reservation)
+         * 2) If file data exists, overlay file-backed mapping
+         * 3) If p_filesz < p_memsz, zero the .bss gap
+         *
+         * For non-page-aligned p_filesz, the file mmap reads extra bytes
+         * beyond p_filesz into .bss. We fix this by zeroing .bss after mapping.
+         */
+        ElfW(Addr) seg_start_mapped = (min_vaddr != 0) ? seg_start : (base + seg_start);
+        ElfW(Addr) seg_end_mapped   = (min_vaddr != 0) ? seg_end   : (base + seg_end);
+
+        /* Step 1: anonymous mapping for the whole segment */
+        if (mmap((void *)seg_start_mapped,
+                 seg_end_mapped - seg_start_mapped,
+                 prot,
+                 MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS,
+                 -1,
+                 0) == MAP_FAILED)
+            exit_with_error("PT_LOAD anon mmap failed");
+
+        /* Step 2: overlay file-backed portion */
         if (p->p_filesz > 0) {
-            if (mmap((void *)seg_map,
-                     file_map - seg_map,
+            ElfW(Addr) fsize = PAGE_UP(p->p_filesz);
+            if (fsize > seg_end_mapped - seg_start_mapped)
+                fsize = seg_end_mapped - seg_start_mapped;
+            if (mmap((void *)seg_start_mapped,
+                     fsize,
                      prot,
                      MAP_PRIVATE | MAP_FIXED,
                      fd,
                      file_offset) == MAP_FAILED)
                 exit_with_error("PT_LOAD file mmap failed");
-        }
 
-        /* Zero-filled (.bss) */
-        if (seg_end > file_end) {
-            if (mmap((void *)bss_map,
-                     bss_end - bss_map,
-                     prot,
-                     MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS,
-                     -1,
-                     0) == MAP_FAILED)
-                exit_with_error("PT_LOAD bss mmap failed");
+            /* Step 3: zero .bss gap (file data may have overwritten it) */
+            if (p->p_memsz > p->p_filesz) {
+                ElfW(Addr) bss_start = seg_start_mapped + p->p_filesz;
+                size_t bss_len = p->p_memsz - p->p_filesz;
+                memset((void *)bss_start, 0, bss_len);
+            }
         }
     }
 
