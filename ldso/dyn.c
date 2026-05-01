@@ -2,6 +2,11 @@
 #include "string.h" 
 #include "types.h"
 
+/* DT_SYMTABSZ (0x1DB) added in glibc 2.35, missing from older headers */
+#ifndef DT_SYMTABSZ
+#define DT_SYMTABSZ 0x1DB
+#endif
+
 
 ElfW(Dyn) *find_dynamic_in_auxv(auxv_info_t *auxv_info)
 {
@@ -20,6 +25,7 @@ void parse_dynamic_reloc_info(dso_t *dso, relocation_dyn_info_t *info) {
 
     ElfW(Addr) dt_symtab = 0;
     ElfW(Addr) dt_strtab = 0;
+    ElfW(Addr) dt_symtabsz = 0;
 
     for (ElfW(Dyn) *dyn = dso->dynamic; dyn->d_tag != DT_NULL; dyn++) {
         switch (dyn->d_tag) {
@@ -54,6 +60,9 @@ void parse_dynamic_reloc_info(dso_t *dso, relocation_dyn_info_t *info) {
             case DT_SYMENT:
                 info->syment = dyn->d_un.d_val;
                 break;
+            case DT_SYMTABSZ:
+                dt_symtabsz = dyn->d_un.d_val;
+                break;
 
             case DT_STRTAB:
                 dt_strtab = dyn->d_un.d_ptr;
@@ -67,7 +76,10 @@ void parse_dynamic_reloc_info(dso_t *dso, relocation_dyn_info_t *info) {
     if (dt_symtab && dt_strtab && info->syment) {
         info->dynsym = (ElfW(Sym)*)dso_resolve_ptr(dso, dt_symtab);
         info->dynstr = (const char*)dso_resolve_ptr(dso, dt_strtab);
-        info->dynsym_sz = (const char*)info->dynstr - (const char*)info->dynsym; // quick hack
+        if (dt_symtabsz)
+            info->dynsym_sz = dt_symtabsz;
+        else
+            info->dynsym_sz = (const char*)info->dynstr - (const char*)info->dynsym;
     }
 }
 
