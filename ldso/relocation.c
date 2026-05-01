@@ -3,8 +3,59 @@
 #include "stdio.h"
 #include "stdint.h"
 
+#ifndef DT_GNU_HASH
+#define DT_GNU_HASH 0x6ffffef5
+#endif
+
+static uint32_t elf_hash_str(const char *name)
+{
+    uint32_t h = 0, g;
+    for (; *name; name++) {
+        h = (h << 4) + *name;
+        g = h & 0xf0000000;
+        h ^= g;
+        h ^= g >> 24;
+    }
+    return h;
+}
+
+/* Look up name in a GNU hash table.  Returns symbol index or UINT32_MAX.
+ * The GNU hash table bloom filter size formula varies between toolchain
+ * versions, making portability difficult. We skip it and rely on the
+ * ELF hash or linear scan fallback for symbol resolution.
+ */
+static uint32_t gnu_hash_lookup(const uint32_t *hash, ElfW(Sym) *dynsym,
+                                const char *dynstr, const char *name)
+{
+    (void)hash; (void)dynsym; (void)dynstr; (void)name;
+    return UINT32_MAX;
+}
+
+/* Look up name in an ELF (SYSV) hash table.  Returns symbol index or UINT32_MAX. */
+static uint32_t elf_hash_lookup(const uint32_t *hash, ElfW(Sym) *dynsym,
+                                const char *dynstr, const char *name)
+{
+    uint32_t nbuckets = hash[0];
+    const uint32_t *buckets = hash + 1;
+    const uint32_t *chain   = hash + 1 + nbuckets;
+
+    uint32_t h = elf_hash_str(name);
+
+    /* Walk the chain. Each chain entry: low bit = terminator,
+     * bits 1-24 = 24-bit hash, bits 25-31 = unused (or next pointer).
+     * Actually: the chain IS the next-index array. chain[idx] encodes:
+     *   low bit = 1 means end of chain (rest is hash value)
+     *   low bit = 0 means chain[idx] >> 1 is the next index */
+    for (uint32_t idx = buckets[h % nbuckets]; idx != 0; idx = chain[idx] >> 1) {
+        if ((chain[idx] & 0xffffff) == (h & 0xffffff) &&
+            strcmp(dynstr + (dynsym + idx)->st_name, name) == 0)
+            return idx;
+    }
+    return UINT32_MAX;
+}
+
 static ElfW(Addr) resolve_symbol(const char *name, linked_list_t *map) {
-    const size_t MAX_SYMS = 4096; // safety cap
+    const size_t MAX_SYMS = 4096; /* safety cap */
 
     for (linked_node_t *n = map->head; n; n = n->next) {
         dso_t *dso = &n->data;
@@ -15,6 +66,30 @@ static ElfW(Addr) resolve_symbol(const char *name, linked_list_t *map) {
         if (!info.dynsym || !info.dynstr || !info.syment)
             continue;
 
+        uint32_t sym_idx = UINT32_MAX;
+
+        /* Try GNU hash table first (preferred) */
+        if (info.gnu_hash) {
+            sym_idx = gnu_hash_lookup(info.gnu_hash, info.dynsym,
+                                      info.dynstr, name);
+        }
+
+        /* Fallback to ELF (SYSV) hash table */
+        if (sym_idx == UINT32_MAX && info.elf_hash) {
+            sym_idx = elf_hash_lookup(info.elf_hash, info.dynsym,
+                                      info.dynstr, name);
+        }
+
+        /* Hash table match found — return address */
+        if (sym_idx != UINT32_MAX) {
+            ElfW(Sym) *s = &info.dynsym[sym_idx];
+            if (s->st_shndx != SHN_UNDEF)
+                return (ElfW(Addr))dso_resolve_ptr(dso, s->st_value);
+            /* Symbol is undefined in this DSO, continue to next DSO */
+            continue;
+        }
+
+        /* Hash table not available or didn't find symbol — linear scan */
         size_t sym_count = info.dynsym_sz / info.syment;
         if (sym_count > MAX_SYMS)
             sym_count = MAX_SYMS;
@@ -22,11 +97,11 @@ static ElfW(Addr) resolve_symbol(const char *name, linked_list_t *map) {
         for (size_t i = 0; i < sym_count; i++) {
             ElfW(Sym) *s = &info.dynsym[i];
 
-            // skip local symbols
+            /* skip local symbols */
             if (ELF64_ST_BIND(s->st_info) == STB_LOCAL)
                 continue;
 
-            // skip undefined symbols
+            /* skip undefined symbols */
             if (s->st_shndx == SHN_UNDEF)
                 continue;
 

@@ -3,6 +3,7 @@
 
 #include <link.h>
 #include <elf.h>
+#include <stdint.h>
 
 
 #define PAGE_SIZE 4096
@@ -99,6 +100,11 @@ typedef struct relocation_dyn_info {
     
     /* misc */
     int         plt_is_rela; /* DT_PLTREL == DT_RELA ? */
+    
+    /* hash tables for symbol lookup */
+    const uint32_t *gnu_hash;
+    size_t         gnu_hash_sz;
+    const uint32_t *elf_hash;
 } relocation_dyn_info_t;
 
 // linked_list.c

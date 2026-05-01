@@ -7,6 +7,10 @@
 #define DT_SYMTABSZ 0x1DB
 #endif
 
+#ifndef DT_GNU_HASH
+#define DT_GNU_HASH 0x6ffffef5
+#endif
+
 
 ElfW(Dyn) *find_dynamic_in_auxv(auxv_info_t *auxv_info)
 {
@@ -66,6 +70,14 @@ void parse_dynamic_reloc_info(dso_t *dso, relocation_dyn_info_t *info) {
 
             case DT_STRTAB:
                 dt_strtab = dyn->d_un.d_ptr;
+                break;
+
+            case DT_HASH:
+                info->elf_hash = (const uint32_t*)dso_resolve_ptr(dso, dyn->d_un.d_ptr);
+                break;
+
+            case DT_GNU_HASH:
+                info->gnu_hash = (const uint32_t*)dso_resolve_ptr(dso, dyn->d_un.d_ptr);
                 break;
 
             default:
