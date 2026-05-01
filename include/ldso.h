@@ -60,9 +60,6 @@ static inline void *dso_resolve_ptr(dso_t *obj, ElfW(Addr) elf_addr)
     if (!elf_addr)
         return (void *)0;
 
-    if (obj->origin == DSO_KERNEL_MAPPED)
-        return (void *)elf_addr;
-
     return (void *)(obj->bias + elf_addr);
 }
 
