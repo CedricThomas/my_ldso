@@ -1,0 +1,2347 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ELF magic: A quick tour of dynamic linking/loading on linux</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --accent: #6c63ff;
+    --accent2: #ff6584;
+    --text: #e4e4e7;
+    --muted: #a1a1aa;
+    --code-bg: #12141c;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --elf-header: #ff6584;
+    --elf-header-bg: rgba(255,101,132,0.18);
+    --elf-header-bg-strong: rgba(255,101,132,0.34);
+    --elf-pht: #6c63ff;
+    --elf-pht-bg: rgba(108,99,255,0.18);
+    --elf-pht-bg-strong: rgba(108,99,255,0.34);
+    --elf-segments: #34d399;
+    --elf-segments-bg: rgba(52,211,153,0.12);
+    --elf-dynamic: #fbbf24;
+    --elf-dynamic-bg: rgba(251,191,36,0.16);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  .deck {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 80px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease, transform 0.35s ease;
+    transform: translateX(40px);
+  }
+
+  .slide.active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+  }
+
+  .slide.exit {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+
+  h1 {
+    font-size: 3.2rem;
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 0.5em;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    font-size: 2.4rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 1.2em;
+    color: var(--accent);
+  }
+
+  h3 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 0.6em;
+    color: var(--accent2);
+  }
+
+  p, li {
+    font-size: 1.25rem;
+    line-height: 1.7;
+    color: var(--text);
+  }
+
+  .subtitle {
+    font-size: 1.5rem;
+    color: var(--muted);
+    margin-top: 0.3em;
+  }
+
+  .tagline {
+    font-size: 1.1rem;
+    color: var(--muted);
+    margin-top: 1.5em;
+  }
+
+  ul {
+    list-style: none;
+    text-align: left;
+    max-width: 720px;
+  }
+
+  ul li {
+    padding: 0.35em 0;
+    padding-left: 1.5em;
+    position: relative;
+  }
+
+  ul li::before {
+    content: "▸";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+  }
+
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    background: var(--code-bg);
+    padding: 0.15em 0.45em;
+    border-radius: 4px;
+    font-size: 0.92em;
+    color: var(--accent2);
+  }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid #2a2d3a;
+    border-radius: 8px;
+    padding: 20px 24px;
+    overflow-x: auto;
+    max-width: 100%;
+    width: 100%;
+    margin: 0.8em 0;
+  }
+
+  pre code {
+    background: none;
+    padding: 0;
+    color: var(--text);
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+
+  .col {
+    display: flex;
+    gap: 40px;
+    align-items: flex-start;
+    max-width: 1100px;
+    width: 100%;
+  }
+
+  .col > div {
+    flex: 1;
+  }
+
+  .highlight {
+    color: var(--green);
+    font-weight: 600;
+  }
+
+  .warn {
+    color: var(--yellow);
+    font-weight: 600;
+  }
+
+  .accent {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .big-number {
+    font-size: 5rem;
+    font-weight: 900;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .stat-row {
+    display: flex;
+    gap: 50px;
+    margin: 1em 0;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-label {
+    font-size: 0.95rem;
+    color: var(--muted);
+    margin-top: 0.3em;
+  }
+
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 900px;
+  }
+
+  .flow-step {
+    background: var(--surface);
+    border: 1px solid #2a2d3a;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-family: monospace;
+    font-size: 0.95rem;
+    white-space: nowrap;
+  }
+
+  .flow-arrow {
+    color: var(--accent);
+    font-size: 1.3rem;
+  }
+
+  .badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    vertical-align: middle;
+    margin-left: 0.4em;
+  }
+
+  .badge.red {
+    background: var(--accent2);
+  }
+
+  .badge.green {
+    background: var(--green);
+    color: #000;
+  }
+
+  .badge.yellow {
+    background: var(--yellow);
+    color: #000;
+  }
+
+  .badge.gray {
+    background: #3b4252;
+    color: var(--text);
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 900px;
+    width: 100%;
+  }
+
+  .grid-card {
+    background: var(--surface);
+    border: 1px solid #2a2d3a;
+    border-radius: 10px;
+    padding: 20px 24px;
+  }
+
+  .grid-card h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.5em;
+  }
+
+  .grid-card p, .grid-card code {
+    font-size: 1rem;
+  }
+
+  .grid-card p {
+    line-height: 1.6;
+  }
+
+  .diagram-board {
+    width: 100%;
+    max-width: 1080px;
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 22px;
+  }
+
+  .diagram-panel {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)),
+      var(--surface);
+    border: 1px solid #2a2d3a;
+    border-radius: 14px;
+    padding: 22px 24px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+
+  .diagram-title {
+    font-size: 0.9rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.8em;
+  }
+
+  .ascii-hero {
+    font-size: 0.94rem;
+    line-height: 1.45;
+  }
+
+  .concept-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .concept-item {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid #34384a;
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+
+  .concept-item strong {
+    display: block;
+    color: var(--text);
+    margin-bottom: 0.25em;
+    font-size: 1rem;
+  }
+
+  .concept-item span {
+    color: var(--muted);
+    font-size: 0.98rem;
+    line-height: 1.5;
+  }
+
+  .memory-layers {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .memory-layer {
+    border-radius: 12px;
+    padding: 14px 16px;
+    border: 1px solid #34384a;
+    background: rgba(255,255,255,0.03);
+  }
+
+  .memory-layer strong {
+    display: inline-block;
+    min-width: 150px;
+    color: var(--text);
+  }
+
+  .memory-layer code {
+    margin-right: 10px;
+  }
+
+  .arrow-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 0.4em;
+  }
+
+  .arrow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid #34384a;
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+
+  .arrow-step b {
+    color: var(--accent);
+    font-size: 1rem;
+    min-width: 28px;
+  }
+
+  .arrow-step span {
+    color: var(--muted);
+    line-height: 1.5;
+    font-size: 0.98rem;
+  }
+
+  .section-note {
+    max-width: 920px;
+    text-align: center;
+    color: var(--muted);
+    margin-top: -0.5em;
+    margin-bottom: 1.2em;
+    font-size: 1.05rem;
+  }
+
+  .legend-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 1em;
+  }
+
+  .legend-chip {
+    font-size: 0.82rem;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid #34384a;
+    background: rgba(255,255,255,0.03);
+    color: var(--muted);
+  }
+
+  .dense-list li {
+    font-size: 1rem;
+    line-height: 1.55;
+    padding-top: 0.22em;
+    padding-bottom: 0.22em;
+  }
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    padding-left: 14px;
+    margin-top: 1em;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .elf-layout {
+    width: 100%;
+    max-width: 1100px;
+    display: grid;
+    grid-template-columns: 1.1fr auto 0.72fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .elf-layout.centered {
+    align-items: center;
+  }
+
+  .elf-bridge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 80px;
+  }
+
+  .elf-bridge-arrow {
+    font-size: 4.2rem;
+    line-height: 1;
+    font-weight: 800;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(108,99,255,0.28);
+  }
+
+  .elf-main {
+    background:
+      radial-gradient(circle at top left, rgba(108,99,255,0.16), transparent 38%),
+      linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)),
+      var(--surface);
+    border: 1px solid #34384a;
+    border-radius: 20px;
+    padding: 18px;
+  }
+
+  .elf-file {
+    border: 1px solid #3a4157;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #171b26;
+  }
+
+  .elf-block {
+    position: relative;
+    padding: 13px 15px;
+    border-bottom: 1px solid #2c3347;
+  }
+
+  .elf-block:last-child {
+    border-bottom: 0;
+  }
+
+  .elf-block.header {
+    background: linear-gradient(90deg, var(--elf-header-bg-strong), var(--elf-header-bg));
+    border-left: 4px solid var(--elf-header);
+  }
+
+  .elf-block.pht {
+    background: linear-gradient(90deg, var(--elf-pht-bg-strong), var(--elf-pht-bg));
+    border-left: 4px solid var(--elf-pht);
+  }
+
+  .elf-block.segments {
+    background: var(--elf-segments-bg);
+    border-left: 4px solid var(--elf-segments);
+  }
+
+  .elf-block.misc {
+    background: rgba(255,255,255,0.02);
+  }
+
+  .elf-label-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: baseline;
+    margin-bottom: 6px;
+  }
+
+  .elf-label-row strong {
+    font-size: 1rem;
+    color: var(--text);
+  }
+
+  .elf-label-row code,
+  .mini-elf-block code {
+    color: var(--text);
+    background: transparent;
+    padding: 0;
+  }
+
+  .map-note h3 code {
+    color: inherit;
+    background: transparent;
+    padding: 0;
+  }
+
+  .elf-offset {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.86rem;
+    color: var(--muted);
+  }
+
+  .elf-block p {
+    font-size: 0.88rem;
+    line-height: 1.42;
+    color: var(--muted);
+  }
+
+  .entry-badge {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+  }
+
+  .entry-badge.single {
+    color: var(--text);
+    background: rgba(255,255,255,0.04);
+  }
+
+  .entry-badge.multi {
+    color: var(--text);
+    background: rgba(255,255,255,0.04);
+  }
+
+  .segment-stack {
+    margin-top: 10px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .segment-item {
+    display: grid;
+    grid-template-columns: 120px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid #374057;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.03);
+  }
+
+  .segment-item.dynamic {
+    background: linear-gradient(90deg, var(--elf-dynamic-bg), rgba(255,255,255,0.03) 55%);
+    border-color: rgba(251,191,36,0.28);
+  }
+
+  .segment-item strong {
+    color: var(--text);
+    font-size: 0.88rem;
+  }
+
+  .segment-item span {
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 1.35;
+  }
+
+  .segment-flags {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.82rem;
+    color: var(--green);
+    border: 1px solid #355648;
+    border-radius: 999px;
+    padding: 4px 9px;
+    white-space: nowrap;
+  }
+
+  .segment-item.dynamic .segment-flags {
+    color: var(--elf-dynamic);
+    border-color: rgba(251,191,36,0.35);
+  }
+
+  .elf-side {
+    display: grid;
+    gap: 14px;
+    align-items: center;
+  }
+
+  .elf-zoom {
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    border: 1px solid #34384a;
+    border-radius: 18px;
+    padding: 18px 18px 20px;
+  }
+
+  .elf-zoom h3 {
+    margin-bottom: 0.45em;
+  }
+
+  .elf-zoom p {
+    font-size: 0.96rem;
+    line-height: 1.55;
+    color: var(--muted);
+  }
+
+  .zoom-grid {
+    display: grid;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .zoom-row {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 12px;
+    padding: 11px 12px;
+    border-radius: 12px;
+    border: 1px solid #34384a;
+    background: rgba(255,255,255,0.03);
+  }
+
+  .zoom-row code {
+    justify-self: start;
+  }
+
+  .zoom-row span {
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.45;
+  }
+
+  .mini-elf-layout {
+    display: grid;
+    grid-template-columns: 0.82fr 1.18fr;
+    gap: 18px;
+    align-items: start;
+  }
+
+  .mini-elf-layout.bridged {
+    grid-template-columns: 0.82fr auto 1.18fr;
+    align-items: center;
+  }
+
+  .mini-elf-file {
+    border: 1px solid #39415a;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #171b26;
+  }
+
+  .mini-elf-block {
+    padding: 10px 12px;
+    border-bottom: 1px solid #293044;
+    font-size: 0.8rem;
+    color: var(--text);
+    font-weight: 600;
+    position: relative;
+  }
+
+  .mini-elf-block:last-child {
+    border-bottom: 0;
+  }
+
+  .mini-elf-block small {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--muted);
+    line-height: 1.35;
+  }
+
+  .mini-elf-block.header {
+    background: linear-gradient(90deg, rgba(255,101,132,0.42), var(--elf-header-bg));
+    border-left: 4px solid var(--elf-header);
+  }
+
+  .mini-elf-block.pht {
+    background: linear-gradient(90deg, rgba(108,99,255,0.42), var(--elf-pht-bg));
+    border-left: 4px solid var(--elf-pht);
+  }
+
+  .mini-elf-block.loads {
+    background: var(--elf-segments-bg);
+    border-left: 4px solid var(--elf-segments);
+  }
+
+  .mini-elf-block.dynamic {
+    background: var(--elf-dynamic-bg);
+    border-left: 4px solid var(--elf-dynamic);
+  }
+
+  .map-notes {
+    display: grid;
+    gap: 12px;
+  }
+
+  .map-note {
+    padding: 12px 14px;
+    border: 1px solid #34384a;
+    border-left-width: 5px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.03);
+  }
+
+  .map-note h3 {
+    font-size: 0.98rem;
+    margin-bottom: 0.25em;
+    color: var(--text);
+  }
+
+  .map-note p {
+    font-size: 0.92rem;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+
+  .map-note.header {
+    border-left-color: var(--elf-header);
+    background: linear-gradient(90deg, var(--elf-header-bg), rgba(255,255,255,0.03) 48%);
+  }
+
+  .map-note.pht {
+    border-left-color: var(--elf-pht);
+    background: linear-gradient(90deg, var(--elf-pht-bg), rgba(255,255,255,0.03) 48%);
+  }
+
+  .map-note.loads {
+    border-left-color: var(--elf-segments);
+    background: linear-gradient(90deg, var(--elf-segments-bg), rgba(255,255,255,0.03) 48%);
+  }
+
+  .map-note.dynamic {
+    border-left-color: var(--elf-dynamic);
+    background: linear-gradient(90deg, var(--elf-dynamic-bg), rgba(255,255,255,0.03) 48%);
+  }
+
+  .offset-board {
+    width: 100%;
+    max-width: 1080px;
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 22px;
+    align-items: start;
+  }
+
+  .offset-board.bridged {
+    grid-template-columns: 1.1fr auto 0.9fr;
+    align-items: center;
+  }
+
+  .offset-board.bridged.wide-header {
+    grid-template-columns: 1.24fr auto 0.76fr;
+  }
+
+  .offset-file {
+    border: 1px solid #39415a;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #171b26;
+  }
+
+  .offset-row {
+    display: grid;
+    grid-template-columns: 86px 1fr;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #293044;
+    align-items: center;
+  }
+
+  .offset-row:last-child {
+    border-bottom: 0;
+  }
+
+  .offset-mark {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.82rem;
+    color: var(--text);
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.06);
+    text-align: center;
+  }
+
+  .offset-label {
+    font-size: 0.92rem;
+    color: var(--muted);
+  }
+
+  .offset-row.header {
+    background: linear-gradient(90deg, rgba(255,101,132,0.30), var(--elf-header-bg));
+    border-left: 4px solid var(--elf-header);
+  }
+
+  .offset-board.wide-header .offset-row.header {
+    grid-template-columns: 94px 1fr;
+  }
+
+  .offset-board.wide-header .offset-row.header .offset-label {
+    white-space: nowrap;
+  }
+
+  .offset-row.pht {
+    background: linear-gradient(90deg, rgba(108,99,255,0.30), var(--elf-pht-bg));
+    border-left: 4px solid var(--elf-pht);
+  }
+
+  .offset-subtable {
+    margin-top: 10px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .offset-subrow {
+    display: grid;
+    grid-template-columns: 78px 1fr;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid #3b4258;
+    background: rgba(255,255,255,0.04);
+  }
+
+  .offset-subrow.null {
+    background: rgba(255,255,255,0.025);
+    border-style: dashed;
+    opacity: 0.82;
+  }
+
+  .offset-submark {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.76rem;
+    color: var(--text);
+    padding: 4px 7px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.06);
+    text-align: center;
+  }
+
+  .offset-subrow span {
+    font-size: 0.84rem;
+    line-height: 1.35;
+    color: var(--muted);
+  }
+
+  .offset-row.loads {
+    background: linear-gradient(90deg, rgba(52,211,153,0.18), rgba(52,211,153,0.08));
+    border-left: 4px solid var(--elf-segments);
+  }
+
+  .offset-row.dynamic {
+    background: linear-gradient(90deg, rgba(251,191,36,0.22), var(--elf-dynamic-bg));
+    border-left: 4px solid var(--elf-dynamic);
+  }
+
+  .offset-row.ghost {
+    background: rgba(255,255,255,0.025);
+    border-left: 4px solid #495067;
+  }
+
+  .offset-row.ghost .offset-mark,
+  .offset-row.ghost .offset-label {
+    opacity: 0.62;
+  }
+
+  .offset-jumps {
+    display: grid;
+    gap: 14px;
+  }
+
+  .offset-jump {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    gap: 14px;
+    align-items: stretch;
+  }
+
+  .offset-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--text);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid #34384a;
+  }
+
+  .offset-card {
+    border: 1px solid #34384a;
+    border-left-width: 5px;
+    border-radius: 14px;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.03);
+  }
+
+  .offset-card h3 {
+    font-size: 1rem;
+    margin-bottom: 0.25em;
+    color: var(--text);
+  }
+
+  .offset-card p {
+    font-size: 0.93rem;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+
+  .offset-card.header {
+    border-left-color: var(--elf-header);
+    background: linear-gradient(90deg, var(--elf-header-bg), rgba(255,255,255,0.03) 52%);
+  }
+
+  .offset-card.pht {
+    border-left-color: var(--elf-pht);
+    background: linear-gradient(90deg, var(--elf-pht-bg), rgba(255,255,255,0.03) 52%);
+  }
+
+  .offset-card.loads {
+    border-left-color: var(--elf-segments);
+    background: linear-gradient(90deg, var(--elf-segments-bg), rgba(255,255,255,0.03) 52%);
+  }
+
+  .arrow-link-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .arrow-link {
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    gap: 12px;
+    align-items: start;
+    padding: 10px 12px;
+    border: 1px solid #34384a;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.03);
+  }
+
+  .arrow-glyph {
+    color: var(--accent);
+    font-size: 1.05rem;
+    line-height: 1.2;
+    text-align: center;
+    padding-top: 1px;
+  }
+
+  .arrow-link strong {
+    display: block;
+    font-size: 0.92rem;
+    margin-bottom: 0.18em;
+  }
+
+  .arrow-link span {
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+
+  .elf-steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    width: 100%;
+    max-width: 1180px;
+  }
+
+  .elf-step-card {
+    min-height: 250px;
+    padding: 18px 18px 20px;
+    border-radius: 18px;
+    border: 1px solid #34384a;
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  }
+
+  .elf-step-card .step-no {
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.9em;
+  }
+
+  .elf-step-card h3 {
+    font-size: 1.02rem;
+    margin-bottom: 0.55em;
+  }
+
+  .elf-step-card p {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: var(--muted);
+  }
+
+  .mini-stack {
+    display: grid;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .mini-stack div {
+    border-radius: 10px;
+    padding: 9px 11px;
+    font-size: 0.88rem;
+    border: 1px solid #34384a;
+    background: rgba(255,255,255,0.03);
+    color: var(--text);
+  }
+
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    width: 100%;
+    max-width: 1080px;
+  }
+
+  .stack-card {
+    background: var(--surface);
+    border: 1px solid #2a2d3a;
+    border-radius: 14px;
+    padding: 18px 20px;
+  }
+
+  .stack-card h3 {
+    font-size: 1rem;
+    margin-bottom: 0.7em;
+  }
+
+  .dependency-graph {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.93rem;
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  .route-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    width: 100%;
+    max-width: 1080px;
+  }
+
+  .route-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    border: 1px solid #2f3443;
+    border-radius: 16px;
+    padding: 20px 22px;
+    min-height: 220px;
+  }
+
+  .route-card .step-no {
+    font-size: 0.82rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1em;
+  }
+
+  .route-card h3 {
+    margin-bottom: 0.5em;
+  }
+
+  .route-card p {
+    font-size: 1rem;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+
+  .layer-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #34384a;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .layer-table th,
+  .layer-table td {
+    padding: 14px 16px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid #2f3443;
+  }
+
+  .layer-table tr:last-child td,
+  .layer-table tr:last-child th {
+    border-bottom: 0;
+  }
+
+  .layer-table th {
+    width: 34%;
+    color: var(--text);
+    font-size: 1rem;
+    background: rgba(255,255,255,0.025);
+  }
+
+  .layer-table td {
+    color: var(--muted);
+    font-size: 0.98rem;
+    line-height: 1.5;
+  }
+
+  .responsibility-board {
+    width: 100%;
+    max-width: 1120px;
+    display: grid;
+    gap: 18px;
+  }
+
+  .responsibility-track {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+    align-items: stretch;
+  }
+
+  .responsibility-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #34384a;
+    border-radius: 18px;
+    padding: 18px 18px 20px;
+    min-height: 220px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)),
+      var(--surface);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    overflow: hidden;
+  }
+
+  .responsibility-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 4px;
+    background: var(--accent);
+    opacity: 0.9;
+  }
+
+  .responsibility-card.file::before {
+    background: var(--accent2);
+  }
+
+  .responsibility-card.kernel::before {
+    background: #7dd3fc;
+  }
+
+  .responsibility-card.loader::before {
+    background: var(--accent);
+  }
+
+  .responsibility-card.crt::before {
+    background: var(--yellow);
+  }
+
+  .responsibility-card.program::before {
+    background: var(--green);
+  }
+
+  .responsibility-stage {
+    font-size: 0.76rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.9em;
+  }
+
+  .responsibility-card h3 {
+    font-size: 1.08rem;
+    margin-bottom: 0.5em;
+  }
+
+  .responsibility-card p {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: var(--muted);
+    margin-bottom: 18px;
+  }
+
+  .responsibility-chip {
+    display: inline-block;
+    margin-top: auto;
+    align-self: flex-start;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+    color: var(--text);
+    background: rgba(255,255,255,0.04);
+  }
+
+  .symbol-flow {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    width: 100%;
+    max-width: 1080px;
+  }
+
+  .symbol-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid #34384a;
+    border-radius: 14px;
+    padding: 18px 18px;
+  }
+
+  .symbol-card h3 {
+    font-size: 1rem;
+    margin-bottom: 0.7em;
+  }
+
+  .symbol-card p {
+    font-size: 0.98rem;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+
+  .path-line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    width: 100%;
+    max-width: 1050px;
+  }
+
+  .path-node {
+    padding: 12px 16px;
+    border-radius: 999px;
+    border: 1px solid #34384a;
+    background: rgba(255,255,255,0.03);
+    font-size: 0.98rem;
+    color: var(--text);
+  }
+
+  .path-arrow {
+    color: var(--accent);
+    font-size: 1.2rem;
+  }
+
+  .progress-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: var(--accent);
+    transition: width 0.3s ease;
+    z-index: 999;
+  }
+
+  .slide-counter {
+    position: fixed;
+    bottom: 16px;
+    right: 24px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    z-index: 999;
+  }
+
+  .nav-hint {
+    position: fixed;
+    bottom: 16px;
+    left: 24px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    z-index: 999;
+  }
+
+  .part-indicator {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.85rem;
+    color: var(--muted);
+    z-index: 999;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid #34384a;
+    background: rgba(255,255,255,0.03);
+    white-space: nowrap;
+  }
+
+  .part-indicator:empty {
+    display: none;
+  }
+
+  /* Title slide special */
+  .title-slide h1 {
+    font-size: 3.3rem;
+  }
+
+  .title-slide .accent-line {
+    width: 80px;
+    height: 4px;
+    background: var(--accent);
+    border-radius: 2px;
+    margin: 1em 0;
+  }
+
+  .emoji-big {
+    font-size: 3rem;
+    margin-bottom: 0.3em;
+  }
+
+  .comparison {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 20px;
+    align-items: center;
+    max-width: 900px;
+    width: 100%;
+  }
+
+  .vs {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--muted);
+  }
+
+  .dim {
+    color: #555;
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+<!-- SLIDE 1: Title -->
+<div class="slide title-slide active">
+  <div class="emoji-big">🔗</div>
+  <h1>ELF magic:<br><span style="color: var(--accent)">A quick tour of dynamic linking/loading on linux</span></h1>
+  <div class="accent-line"></div>
+  <p class="subtitle">Quand vous lancez un programme Linux, un chargeur caché trouve ses bibliothèques et prépare la mémoire avant de lancer votre programme</p>
+  <p class="tagline">x86_64 · ELF · Freestanding C · Systèmes Linux</p>
+</div>
+
+<!-- SLIDE 2: Problem -->
+<div class="slide">
+  <h2>🧭 Route de la présentation</h2>
+  <p class="section-note">En 30 minutes, l'objectif est simple : comprendre qui intervient au démarrage d'un programme, comment un fichier ELF est chargé, comment les bibliothèques sont chargées, et comment le programme les utilise.</p>
+  <div class="route-grid">
+    <div class="route-card">
+      <div class="step-no">Partie 1</div>
+      <h3>Qui fait quoi ?</h3>
+      <p>Pourquoi <code>main()</code> arrive tard, et comment le kernel puis <code>ld.so</code> se partagent le travail.</p>
+    </div>
+    <div class="route-card">
+      <div class="step-no">Partie 2</div>
+      <h3>Lire un ELF</h3>
+      <p>Voir le binaire comme une carte de navigation plutôt que comme un tas opaque d'octets.</p>
+    </div>
+    <div class="route-card">
+      <div class="step-no">Partie 3</div>
+      <h3>Passer à l'exécution</h3>
+      <p>Mapper des segments, charger des dépendances, préparer le runtime C, puis exécuter <code>main()</code>.</p>
+    </div>
+    <div class="route-card">
+      <div class="step-no">Partie 4</div>
+      <h3>Apprentissages</h3>
+      <p>Ce que ce projet m'a appris, pourquoi ce modèle mental m'a servi et ce que j'ai voulu explorer avec ce projet.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 3: Problem -->
+<div class="slide">
+  <h2>📦 Pourquoi des bibliothèques partagées existent ?</h2>
+  <div class="comparison">
+    <div class="grid-card">
+      <h3>Sans partage <span class="badge red">coûteux</span></h3>
+      <p>Chaque programme contient <strong>sa propre copie</strong> de libc, libm, etc.</p>
+      <ul style="margin-top: 0.8em;">
+        <li>Le binaire grossit vite</li>
+        <li>La même librairie est dupliquée en mémoire</li>
+        <li>Une mise à jour impose de tout recompiler</li>
+      </ul>
+    </div>
+    <div class="vs">vs</div>
+    <div class="grid-card">
+      <h3>Avec partage <span class="badge green">mieux</span></h3>
+      <p>Le code commun vit dans des fichiers <strong>.so</strong> chargés au lancement</p>
+      <ul style="margin-top: 0.8em;">
+        <li>Le programme principal reste petit</li>
+        <li>Les pages de code peuvent être partagées</li>
+        <li>Mettre à jour une bibliothèque profite à tous</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 4: Solution -->
+<div class="slide">
+  <h2>💡 Gardons un exemple simple en tête</h2>
+  <p style="max-width: 700px; text-align: center; margin-bottom: 1.5em;">
+    On va suivre un mini programme <strong>hello</strong> qui appelle <code>puts("hello")</code>. Le but de la présentation est simple :
+    <strong>Découvrir comment cet appel finit par fonctionner</strong>
+  </p>
+  <div class="col">
+    <div>
+      <pre><code>$ cat hello.c 
+// hello.c
+#include &lt;stdio.h&gt;
+
+int main(void) {
+    puts("hello");
+    return 0;
+}
+
+$ gcc hello.c -o hello
+$ ./hello
+hello</code></pre>
+    </div>
+    <div>
+      <ul>
+        <li>Le binaire <code>hello</code> ne contient pas l'implémentation de <code>puts()</code></li>
+        <li>Il déclare simplement : "j'aurai besoin de la lib C au démarrage"</li>
+        <li>Un composant <strong>invisible</strong> va trouver cette librairie et brancher les appels de fonctions aux bonnes adresses</li>
+        <li><span class="highlight">Ce composant, c'est <code>ld.so</code></span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 5: Enter ld.so -->
+<div class="slide">
+  <h2>🎯 <code>main()</code> is a lie</h2>
+  <p style="max-width: 700px; text-align: center; margin-bottom: 1.5em;">
+    Avant <code>main()</code>, plusieurs acteurs apparaissent déjà dans le démarrage du programme.
+  </p>
+  <div class="flow">
+    <div class="flow-step" style="border-color: #4b5563; background: rgba(75,85,99,0.16);">
+      <strong>kernel</strong>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step" style="border-color: var(--accent); background: rgba(108,99,255,0.1);">
+      <strong>ld.so</strong> <span class="badge">linking</span>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step" style="border-color: var(--yellow); background: rgba(251,191,36,0.12);">
+      <strong>_start()</strong> <span class="badge yellow">runtime C</span>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step" style="border-color: var(--green); background: rgba(52,211,153,0.1);">
+      <strong>main()</strong> <span class="badge green">votre code</span>
+    </div>
+  </div>
+  <div style="margin-top: 1.5em;">
+    <ul style="max-width: 600px;">
+      <li>Le <strong>kernel</strong> est l'acteur externe qui lance le processus</li>
+      <li><code>ld.so</code> est le loader dynamique qui résout les dépendances dynamiquement</li>
+      <li><code>_start()</code> est le vrai point d'entrée d'un ELF mettant en place le runtime du binaire</li>
+      <li><code>main()</code> arrive en bout de chaîne et c'est le point d'entrée de votre programme</li>
+      <li><span class="highlight">Chaque couche prépare la suivante</span></li>
+    </ul>
+  </div>
+</div>
+
+<div class="slide">
+  <h2>🎭 Les couches de responsabilité</h2>
+  <div class="responsibility-board" style="margin-top: 18px;">
+    <div class="responsibility-track">
+    <div class="responsibility-card file">
+      <div class="responsibility-stage">1 · description</div>
+      <h3>Le fichier</h3>
+      <p>Le binaire sur disque ne contient qu'une description organisée : du code, des données, des dépendances et des choses à relier.</p>
+      <div class="responsibility-chip">décrit</div>
+    </div>
+    <div class="responsibility-card kernel">
+      <div class="responsibility-stage">2 · lancement</div>
+      <h3>Le kernel</h3>
+      <p>Il lance le processus, mappe le binaire principal et donne le contrôle au chargeur dynamique si le programme en a besoin.</p>
+      <div class="responsibility-chip">démarre</div>
+    </div>
+    <div class="responsibility-card loader">
+      <div class="responsibility-stage">3 · câblage</div>
+      <h3><code>ld.so</code></h3>
+      <p>Il charge les bibliothèques, construit la mémoire manquante, résout les symboles et applique les patchs nécessaires.</p>
+      <div class="responsibility-chip">relie</div>
+    </div>
+    <div class="responsibility-card crt">
+      <div class="responsibility-stage">4 · transition</div>
+      <h3>Le CRT startup</h3>
+      <p>Il prépare l'environnement d'exécution réel : stack exploitable, variables globales, lib C fonctionnelle et transition finale vers <code>main()</code>.</p>
+      <div class="responsibility-chip">prépare</div>
+    </div>
+    <div class="responsibility-card program">
+      <div class="responsibility-stage">5 · exécution</div>
+      <h3>Votre programme</h3>
+      <p>Il n'entre vraiment en scène qu'une fois tout le câblage terminé. C'est seulement là que <code>main()</code> a du sens.</p>
+      <div class="responsibility-chip">utilise</div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide">
+  <h2>🦸 Le super-pouvoir de <code>ld.so</code></h2>
+  <div class="grid-2" style="max-width: 1040px; align-items: center;">
+      <pre style="width: 100%; max-width: 460px; margin: 0;">
+<code><span class="dim"># Le kernel pré-charge le binaire en mémoire</span>
+<span class="dim"># puis délègue la relocation à ld.so</span>
+$ ./hello
+hello
+
+<span class="dim"># ld.so charge lui même le binaire</span>
+<span class="dim"># puis s'occupoe de la relocation</span>
+$ ./ld.so ./hello
+hello</code></pre>
+    <div class="grid-card">
+      <h3>ld.so est autonome</h3>
+      <ul class="dense-list">
+        <li>Le vrai super-pouvoir de <code>ld.so</code> est qu'il peut <strong>charger le binaire principal lui-même</strong>, pas seulement les bibliothèques.</li>
+        <li>C'est ce point de vue qui rend visibles toutes les étapes internes du loader, au lieu de les laisser cachées derrière un mapping côté kernel.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout" style="max-width: 900px; margin-top: 4em;">Pour le reste de la présentation, on assumera que <code>ld.so</code> ouvre le programme cible lui même.</div>
+</div>
+
+<div class="slide">
+  <h2>⚖️ Binaire principal vs bibliothèque <code>.so</code></h2>
+  <p class="section-note">Même format ELF, mais pas le même rôle. L'un est le point de départ du processus; l'autre est une dépendance chargée en cours de route.</p>
+  <div class="comparison" style="max-width: 1100px;">
+    <div class="grid-card">
+      <h3>Exécutable principal</h3>
+      <ul class="dense-list" style="margin-top: 0.8em;">
+        <li><strong>Qui charge le binaire</strong> : le kernel / <code>ld.so</code></li>
+        <li><strong>Rôle</strong> : fournir le point d'entrée du programme</li>
+        <li><strong>Ce qu'il contient souvent</strong> : un chemin vers l'interpréteur dynamique et une liste de dépendances</li>
+      </ul>
+    </div>
+    <div class="vs">vs</div>
+    <div class="grid-card">
+      <h3>Bibliothèque partagée</h3>
+      <ul class="dense-list" style="margin-top: 0.8em;">
+        <li><strong>Qui charge le binaire</strong> : <code>ld.so</code>, depuis le runtime d'un autre ELF</li>
+        <li><strong>Rôle</strong> : apporter du code, des données et des symboles réutilisables</li>
+        <li><strong>Ce qu'elle contient souvent</strong> : des exports, des imports et ses propres relocations</li>
+      </ul>
+    </div>
+  </div>
+  <div class="path-line" style="margin-top: 1.3em;">
+    <div class="path-node">même structure ELF</div>
+    <div class="path-arrow">→</div>
+    <div class="path-node">mêmes segments</div>
+    <div class="path-arrow">→</div>
+    <div class="path-node">usage différent</div>
+  </div>
+</div>
+
+<!-- SLIDE 7: ELF format -->
+<div class="slide">
+  <h2>🗺️ ELF map : que trouve <code>ld.so</code> dans un binaire ?</h2>
+  <div class="elf-layout centered">
+    <div class="elf-main">
+      <div class="diagram-title">Vue D'ensemble Du Fichier ELF</div>
+      <div class="elf-file">
+        <div class="elf-block header">
+          <div class="elf-label-row">
+            <strong><code>ELF header</code></strong>
+            <span class="elf-offset">tout en haut du fichier</span>
+          </div>
+          <p>Une seule structure. Elle identifie le fichier et dit au loader où regarder ensuite.</p>
+          <span class="entry-badge single">une seule structure</span>
+        </div>
+        <div class="elf-block pht">
+          <div class="elf-label-row">
+            <strong><code>Program Header Table</code></strong>
+            <span class="elf-offset">liste d'entrées</span>
+          </div>
+          <p>La table que <code>ld.so</code> suit vraiment. Chaque entrée décrit un morceau important du fichier ou une action à faire.</p>
+          <span class="entry-badge multi">plusieurs entrées</span>
+        </div>
+        <div class="elf-block segments">
+          <div class="elf-label-row">
+            <strong>Segments</strong>
+            <span class="elf-offset">certains seront mappés en mémoire</span>
+          </div>
+          <p>Le loader y trouve les blocs à mapper en mémoire, les droits à appliquer, et l'endroit où commencer la phase de linking dynamique.</p>
+          <div class="segment-stack">
+            <div class="segment-item">
+              <strong>Bloc de code</strong>
+              <span>Instructions exécutables du programme.</span>
+              <span class="segment-flags">RX</span>
+            </div>
+            <div class="segment-item">
+              <strong>Bloc constant</strong>
+              <span>Constantes et tables consultées en lecture seule.</span>
+              <span class="segment-flags">R</span>
+            </div>
+            <div class="segment-item">
+              <strong>Bloc modifiable</strong>
+              <span>Données globales et zone "zero-filled".</span>
+              <span class="segment-flags">RW</span>
+            </div>
+            <div class="segment-item dynamic">
+              <strong>Bloc dynamique</strong>
+              <span>Dépendances, symboles et relocations à traiter.</span>
+              <span class="segment-flags">link</span>
+            </div>
+          </div>
+        </div>
+        <div class="elf-block misc">
+          <div class="elf-label-row">
+            <strong>Autres zones</strong>
+            <span class="elf-offset">souvent pour les outils</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="elf-bridge" aria-hidden="true">
+      <div class="elf-bridge-arrow">&gt;</div>
+    </div>
+    <div class="elf-side">
+      <div class="elf-zoom">
+        <div class="diagram-title">À retenir</div>
+        <h3>Le chemin utile est court</h3>
+        <div class="map-notes">
+          <div class="map-note header">
+            <h3>1. Header</h3>
+            <p>Une structure unique pour identifier le fichier et trouver la suite.</p>
+          </div>
+          <div class="map-note pht">
+            <h3>2. Table</h3>
+            <p>Plusieurs entrées qui disent quels blocs du fichier comptent vraiment.</p>
+          </div>
+          <div class="map-note loads">
+            <h3>3. Segments</h3>
+            <p>Les morceaux qui deviennent la mémoire du programme ou guident le linking.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide">
+  <h2>⛏️ Comment le loader navigue dans un ELF ?</h2>
+  <p class="section-note">Un ELF c'est comme un jeu d'enquête : chaque couche répond à une question et en pose deux nouvelles.</p>
+  <div class="offset-board bridged wide-header">
+    <div class="offset-file">
+      <div class="offset-row header">
+        <div class="offset-mark">0x00</div>
+        <div class="offset-label">Le bloc <strong>ELF Header</strong> référence la <strong>header table</strong> à l'offset <code>0x40</code></div>
+      </div>
+      <div class="offset-row pht">
+        <div class="offset-mark">0x40</div>
+        <div class="offset-label">
+          Le bloc <strong>Program Header Table</strong> contient plusieurs entrées utiles
+          <div class="offset-subtable">
+            <div class="offset-subrow">
+              <div class="offset-submark">[0]</div>
+              <span><strong>PT_LOAD</strong> -> segment de code à l'offset <code>0x1000</code></span>
+            </div>
+            <div class="offset-subrow">
+              <div class="offset-submark">[1]</div>
+              <span><strong>PT_LOAD</strong> -> segment de données à l'offset <code>0x2000</code></span>
+            </div>
+            <div class="offset-subrow">
+              <div class="offset-submark">[2]</div>
+              <span><strong>PT_DYNAMIC</strong> -> bloc dynamique à l'offset <code>0x2800</code></span>
+            </div>
+            <div class="offset-subrow">
+              <div class="offset-submark">[n]</div>
+              <span><strong>...</strong></span>
+            </div>
+            <div class="offset-subrow null">
+              <div class="offset-submark">[*]</div>
+              <span><strong>PT_NULL</strong> -> entrée vide, fin de la liste</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="offset-row loads">
+        <div class="offset-mark">0x1000</div>
+        <div class="offset-label">segment de code</div>
+      </div>
+      <div class="offset-row ghost">
+        <div class="offset-mark">...</div>
+        <div class="offset-label">autres entrées / segments non utiles</div>
+      </div>
+      <div class="offset-row loads">
+        <div class="offset-mark">0x2000</div>
+        <div class="offset-label">segment de données</div>
+      </div>
+      <div class="offset-row dynamic">
+        <div class="offset-mark">0x2800</div>
+        <div class="offset-label">bloc dynamique</div>
+      </div>
+    </div>
+    <div class="elf-bridge" aria-hidden="true">
+      <div class="elf-bridge-arrow">&gt;</div>
+    </div>
+    <div class="offset-jumps">
+      <div class="offset-jump">
+        <div class="offset-arrow">1</div>
+        <div class="offset-card header">
+          <h3>Premier saut</h3>
+          <p>Le loader lit le début du fichier, puis récupère un <strong>offset</strong> vers la table suivante.</p>
+        </div>
+        
+      </div>
+      <div class="offset-jump">
+        <div class="offset-arrow">2</div>
+        <div class="offset-card pht">
+          <h3>Deuxième saut</h3>
+          <p>La table contient plusieurs entrées. Le loader les parcourt une par une : il recupère les offsets des segments utiles et s'arrête sur le header du type <code>PT_NULL</code> qui marque la fin des entrées de la table.</p>
+        </div>
+      </div>
+      <div class="offset-jump">
+        <div class="offset-arrow">3</div>
+        <div class="offset-card loads">
+          <h3>Ce que le loader en tire</h3>
+          <p>Après ce parcours, il sait <strong>quels segments mapper</strong> et <strong>où trouver les infos dynamiques</strong>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 8: ELF map -->
+<div class="slide">
+  <h2>🧩 Deux familles de segments utiles</h2>
+  <p class="section-note">Après avoir appris à lire l'ELF, on sépare maintenant ce qui sert à <strong>construire la mémoire</strong> de ce qui sert à <strong>finir le linking</strong>.</p>
+  <div class="elf-zoom" style="width: 100%; max-width: 1080px;">
+    <div class="mini-elf-layout">
+      <div class="mini-elf-file">
+        <div class="mini-elf-block header">
+          <code>ELF header</code>
+          <small>passe vite dessus</small>
+        </div>
+        <div class="mini-elf-block pht">
+          <code>Program Header Table</code>
+          <small>choisit quoi suivre</small>
+        </div>
+        <div class="mini-elf-block loads">
+          segments
+          <small>plusieurs blocs à mapper</small>
+        </div>
+        <div class="mini-elf-block dynamic">
+          dynamique
+          <small>un bloc pour relier</small>
+        </div>
+      </div>
+      <div>
+        <div class="diagram-title">Le Fork Dans Le Flux</div>
+        <div class="map-notes">
+          <div class="map-note loads">
+            <h3>Segments</h3>
+            <p>Ils deviennent les zones mémoire du programme : code, constantes et données modifiables. C'est la branche qui mène aux slides de <strong>mapping</strong> et de <strong>permissions mémoire</strong>.</p>
+          </div>
+          <div class="map-note dynamic">
+            <h3>Dynamique</h3>
+            <p>Ce bloc explique ce qu'il reste à raccorder : bibliothèques, symboles et relocations. C'est la branche qui mène aux slides de <strong>chargement des dépendances</strong> et de <strong>résolution de symboles</strong>.</p>
+          </div>
+        </div>
+        <div class="diagram-title" style="margin-top: 16px;">Comment Cette Slide S'Insère Dans La Suite</div>
+        <div class="arrow-link-list">
+          <div class="arrow-link">
+            <div class="arrow-glyph">↳</div>
+            <div>
+              <strong>Branche 1 : mapper</strong>
+              <span>Les prochaines slides montreront comment un <code>.so</code> devient de vraies pages mémoire à partir des segments.</span>
+            </div>
+          </div>
+          <div class="arrow-link">
+            <div class="arrow-glyph">↳</div>
+            <div>
+              <strong>Branche 2 : relier</strong>
+              <span>Ensuite, on verra comment les infos dynamiques servent à trouver les bibliothèques, résoudre les noms et appliquer les relocations.</span>
+            </div>
+          </div>
+        </div>
+        <div class="callout">Idée à retenir : <strong>la table a ouvert deux chantiers différents</strong> pour le loader, et la suite du deck va les suivre l'un après l'autre.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 10: Challenge 1 -->
+<div class="slide">
+  <h2>⚡ Premier piège : pas de libc pour construire libc</h2>
+  <p style="max-width: 750px; text-align: center; margin-bottom: 1.5em;">
+    Le chargeur démarre très tôt. Donc au moment où il tourne, il ne peut pas encore s'appuyer sur les conforts habituels.
+  </p>
+  <div class="grid-2">
+    <div class="grid-card">
+      <h3>Ce qui manque au départ <span class="badge red">contraintes</span></h3>
+      <ul>
+        <li>Pas de <code>malloc()</code> prêt à l'emploi</li>
+        <li>Pas de <code>printf()</code> confortable</li>
+        <li>Pas de couches haut niveau autour des syscalls</li>
+        <li>Très peu d'outils de debug</li>
+        <li>Presque aucun filet de sécurité</li>
+      </ul>
+    </div>
+    <div class="grid-card">
+      <h3>Donc il faut <span class="badge green">se débrouiller</span></h3>
+      <ul>
+        <li>Compiler en mode freestanding</li>
+        <li>Faire des syscalls directs au kernel</li>
+        <li>Écrire un mini <code>printf</code> si besoin</li>
+        <li>Écrire un mini allocateur si besoin</li>
+        <li>Garder le code simple et robuste</li>
+      </ul>
+    </div>
+  </div>
+  <pre style="max-width: 700px; margin-top: 1em;"><code><span class="dim">// Point d'entrée réel du chargeur :</span>
+<span class="highlight">.global _start</span>
+_start:
+    xor %ebp, %ebp
+    mov %rsp, %rdi        <span class="dim">// récupérer la pile initiale</span>
+    call ldso_main        <span class="dim">// commencer sans libc</span></code></pre>
+</div>
+
+<!-- SLIDE 11: Challenge 2 -->
+<div class="slide">
+  <h2>🗺️ Comment un fichier <code>.so</code> devient-il de la mémoire ?</h2>
+  <p style="max-width: 750px; text-align: center; margin-bottom: 1.2em;">
+    Le chargeur doit prendre une bibliothèque sur disque et la transformer en pages mémoire utilisables par le processus.
+  </p>
+  <div class="col">
+    <div>
+      <h3>Pipeline réel</h3>
+      <pre><code>open("libc.so.6")
+   ↓
+read(file identity + segment table)
+   ↓
+find loadable segments
+   ↓
+mmap(PROT_NONE) reservation
+   ↓
+mmap(MAP_FIXED) file-backed pages
+   ↓
+zero-fill p_memsz - p_filesz
+   ↓
+mprotect / final perms
+   ↓
+compute load bias</code></pre>
+    </div>
+    <div>
+      <ul class="dense-list">
+        <li>Le code machine devient des pages <code>R-X</code> exécutables</li>
+        <li>Les données deviennent des pages <code>RW-</code> modifiables</li>
+        <li>Tout se fait page par page, typiquement 4096 octets</li>
+        <li>La taille sur disque et la taille en mémoire diffèrent souvent à cause des zones initialisées à zéro</li>
+        <li>Si la bibliothèque n'arrive pas à l'adresse prévue, il faut garder ce décalage en tête</li>
+        <li><span class="highlight">Charger une lib, c'est transformer une description de segments en vraies pages mémoire avec permissions</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide">
+  <h2>🧱 Charger une bibliothèque, étape par étape</h2>
+  <p class="section-note">Ici, le bon modèle mental n'est pas "ouvrir un fichier", mais "fabriquer une image mémoire cohérente à partir d'un plan".</p>
+  <div class="path-line" style="margin-bottom: 1.4em;">
+    <div class="path-node">ouvrir le fichier</div>
+    <div class="path-arrow">→</div>
+    <div class="path-node">lire la table utile</div>
+    <div class="path-arrow">→</div>
+    <div class="path-node">réserver la mémoire</div>
+    <div class="path-arrow">→</div>
+    <div class="path-node">mapper les segments</div>
+    <div class="path-arrow">→</div>
+    <div class="path-node">appliquer les droits</div>
+    <div class="path-arrow">→</div>
+    <div class="path-node">retenir le décalage</div>
+  </div>
+  <div class="grid-2" style="max-width: 1040px;">
+    <div class="grid-card">
+      <h3>Ce que cela implique</h3>
+      <ul class="dense-list">
+        <li>Une bibliothèque n'est pas copiée "en vrac" dans la mémoire.</li>
+        <li>Chaque segment a sa propre position et ses propres permissions.</li>
+        <li>La partie présente sur disque n'est pas toujours la même que la partie visible en mémoire.</li>
+      </ul>
+    </div>
+    <div class="grid-card">
+      <h3>Pourquoi c'est important</h3>
+      <ul class="dense-list">
+        <li>Si cette étape est incorrecte, tout le reste devient faux.</li>
+        <li>Les relocations n'ont de sens qu'une fois les segments réellement en place.</li>
+        <li>C'est la même idée qu'on retrouve ensuite dans PE.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 10: Challenge 3 -->
+<div class="slide">
+  <h2>🔀 Relocation = remplacer des trous par de vraies adresses</h2>
+  <p style="max-width: 750px; text-align: center; margin-bottom: 1.2em;">
+    Une relocation répond à une question simple : <strong>"quelle valeur faut-il écrire ici pour que le programme pointe enfin vers la bonne adresse ?"</strong>
+  </p>
+  <div class="diagram-board">
+    <div class="diagram-panel">
+      <div class="diagram-title">Le Flux</div>
+      <pre class="ascii-hero"><code>1. le programme demande : puts
+2. le loader trouve : libc::puts
+3. il récupère : 0x7f...1234
+4. il écrit cette valeur dans le slot visé
+5. l'appel indirect fonctionne enfin</code></pre>
+      <div class="callout">La relocation n'est pas une idée abstraite : c'est un <strong>write</strong> dans une case mémoire précise.</div>
+    </div>
+    <div class="diagram-panel">
+      <div class="diagram-title">Les 3 Objets À Distinguer</div>
+      <ul class="dense-list">
+        <li><strong>Symbole</strong> : le nom recherché, par exemple <code>puts</code>.</li>
+        <li><strong>Adresse résolue</strong> : la vraie valeur trouvée dans une bibliothèque chargée.</li>
+        <li><strong>Relocation</strong> : l'endroit mémoire où cette valeur doit être écrite.</li>
+        <li>La GOT ou la PLT ne changent pas l'idée générale : ce sont juste des emplacements intermédiaires.</li>
+        <li><span class="highlight">À retenir : chercher un nom, obtenir une adresse, écrire cette adresse quelque part.</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 11: Architecture -->
+<div class="slide">
+  <h2>🏗️ Mon chargeur en 5 étapes</h2>
+  <div class="flow" style="margin-bottom: 1.5em;">
+    <div class="flow-step">_start<span class="badge">asm</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">parser ELF</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">charger les libs</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">résoudre les noms</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">patcher les adresses</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step" style="border-color: var(--green);">sauter vers le programme</div>
+  </div>
+  <div class="grid-2" style="max-width: 1000px;">
+    <div class="grid-card">
+      <h3>Lecture et chargement</h3>
+      <ul style="font-size: 0.95rem;">
+        <li>Le binaire principal est déjà mappé par le kernel</li>
+        <li>Les bibliothèques annexes sont ouvertes puis mappées par mon code</li>
+        <li>Les dépendances sont suivies récursivement</li>
+        <li>La recherche suit les chemins usuels de Linux : RPATH, <code>LD_LIBRARY_PATH</code>, RUNPATH, chemins système</li>
+        <li>Le chargeur prépare ensuite un saut vers l'entry point du programme, pas directement vers <code>main()</code></li>
+      </ul>
+    </div>
+    <div class="grid-card">
+      <h3>Branchement final</h3>
+      <ul style="font-size: 0.95rem;">
+        <li>Chaque symbole externe est recherché dans la link map</li>
+        <li>Les emplacements marqués sont corrigés en mémoire</li>
+        <li>Le chargeur garde une vue d'ensemble des bibliothèques déjà chargées</li>
+        <li>Puis il saute enfin vers l'adresse d'entrée du programme, où le CRT startup finira par appeler <code>main()</code></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 12: Data structures -->
+<div class="slide">
+  <h2>📊 La structure la plus importante : la link map</h2>
+  <div class="diagram-board">
+    <div class="diagram-panel">
+      <div class="diagram-title">Ce Que C'est, En Une Phrase</div>
+      <p style="max-width: 470px;">
+        La <strong>link map</strong> est la liste structurée de tout ce qui est déjà chargé, avec assez d'informations pour
+        <strong>éviter les doublons</strong>, <strong>chercher un symbole</strong> et <strong>calculer des adresses réelles</strong>.
+      </p>
+      <div class="arrow-list" style="margin-top: 1em;">
+        <div class="arrow-step"><b>A</b><span><strong>qui</strong> : nom / chemin de la bibliothèque</span></div>
+        <div class="arrow-step"><b>B</b><span><strong>où</strong> : adresse de base en mémoire</span></div>
+        <div class="arrow-step"><b>C</b><span><strong>quoi</strong> : symboles exportés, relocations, dépendances</span></div>
+      </div>
+    </div>
+    <div class="diagram-panel">
+      <div class="diagram-title">Pourquoi Elle Est Centrale</div>
+      <div class="arrow-list">
+        <div class="arrow-step"><b>1</b><span>Quand une nouvelle bibliothèque est chargée, elle est ajoutée à cette structure.</span></div>
+        <div class="arrow-step"><b>2</b><span>Quand un symbole manque, la recherche parcourt cette structure dans un ordre défini.</span></div>
+        <div class="arrow-step"><b>3</b><span>Quand une relocation doit être appliquée, l'adresse de base stockée ici sert au calcul final.</span></div>
+        <div class="arrow-step"><b>4</b><span>Quand une bibliothèque est déjà présente, cette structure évite de la recharger.</span></div>
+      </div>
+      <div class="callout">Si le public doit retenir une seule structure interne du loader, c'est celle-ci.</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 13: Symbol lookup -->
+<div class="slide">
+  <h2>🔎 Résoudre un symbole : la partie vraiment "linker"</h2>
+  <p class="section-note">Ici, le raisonnement doit être vu comme une boucle de recherche simple, pas comme une jungle de structures ELF.</p>
+  <div class="diagram-board" style="margin-top: 18px;">
+    <div class="diagram-panel">
+      <div class="diagram-title">La Question Que Le Loader Résout</div>
+      <pre class="ascii-hero"><code>"je dois remplir ce slot"
+        ↓
+"quel symbole il me faut ?"
+        ↓
+"dans quelle bibliothèque existe-t-il ?"
+        ↓
+"quelle est son adresse réelle ?"
+        ↓
+"j'écris cette valeur ici"</code></pre>
+    </div>
+    <div class="diagram-panel">
+      <div class="diagram-title">Version Opérationnelle</div>
+      <pre class="ascii-hero"><code>nom demandé
+   ↓
+parcourir les bibliothèques chargées
+   ↓
+trouver la première exportation valide
+   ↓
+récupérer son adresse mémoire
+   ↓
+écrire cette adresse dans le bon slot
+   ↓
+l'appel devient valide</code></pre>
+      <ul class="dense-list">
+        <li><strong>Entrée</strong> : un nom à résoudre et un slot à remplir.</li>
+        <li><strong>Recherche</strong> : parcourir la link map dans l'ordre choisi.</li>
+        <li><strong>Sortie</strong> : une adresse concrète écrite en mémoire.</li>
+        <li><span class="highlight">Le cœur "linker" n'est pas de mapper des pages, mais de faire correspondre un nom à une adresse.</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 14: Features -->
+<div class="slide">
+  <h2>🛠️ Ce que mon chargeur sait déjà faire</h2>
+  <div class="grid-2" style="max-width: 1000px;">
+    <div class="grid-card">
+      <h3>Le cœur <span class="badge green">✓</span></h3>
+      <ul style="font-size: 1rem;">
+        <li>Lire un binaire ELF et ses dépendances</li>
+        <li>Charger des bibliothèques via <code>mmap</code></li>
+        <li>Résoudre des symboles entre plusieurs DSO</li>
+        <li>Appliquer les relocations x86_64 utiles</li>
+        <li>Lancer des binaires <code>ET_EXEC</code> et <code>ET_DYN</code></li>
+      </ul>
+    </div>
+    <div class="grid-card">
+      <h3>Outils de debug <span class="badge">✓</span></h3>
+      <ul style="font-size: 1rem;">
+        <li><code>LD_TRACE_LOADED_OBJECTS=1</code> pour lister les dépendances</li>
+        <li><code>LD_SHOW_AUXV=1</code> pour afficher l'environnement de départ</li>
+        <li><code>LD_LIBRARY_PATH</code>, RPATH et RUNPATH</li>
+        <li>Mini libc intégrée pour survivre avant glibc</li>
+        <li>Messages d'erreur exploitables</li>
+      </ul>
+    </div>
+  </div>
+  <div class="stat-row" style="margin-top: 1.5em;">
+    <div class="stat">
+      <div class="big-number">~10</div>
+      <div class="stat-label">fichiers ld.so</div>
+    </div>
+    <div class="stat">
+      <div class="big-number">~9</div>
+      <div class="stat-label">fichiers libc mini</div>
+    </div>
+    <div class="stat">
+      <div class="big-number">0</div>
+      <div class="stat-label">dépendance externe</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 15: Demo -->
+<div class="slide">
+  <h2>🚀 Démo : le chargeur au travail</h2>
+  <pre style="max-width: 800px;"><code><span class="dim"># Compiler le linker</span>
+$ make all
+
+<span class="dim"># 1. Voir quelles bibliothèques seraient chargées</span>
+$ LD_TRACE_LOADED_OBJECTS=1 ./ld.so ./test-standalone
+  libuseless.so => ./libuseless.so (0x7f...)
+
+<span class="dim"># 2. Voir les infos fournies au démarrage par le kernel</span>
+$ LD_SHOW_AUXV=1 ./ld.so ./test-standalone
+  AT_PHDR:              0x400040
+  AT_ENTRY:             0x4011a0
+  AT_PROGRAM_HEADERS:   13
+  ...
+
+<span class="dim"># 3. Lancer réellement le programme via mon chargeur</span>
+$ ./ld.so ./test-standalone arg1 arg2
+./test-standalone
+arg1
+arg2
+
+<span class="highlight"># Le point important :</span>
+$ ldd ./test-standalone
+    libuseless.so => ./libuseless.so
+    /lib64/ld-linux-x86-64.so.2</code></pre>
+</div>
+
+<!-- SLIDE 16: Payoff -->
+<div class="slide">
+  <h2>🎯 Donc, comment <code>puts("hello")</code> finit par marcher ?</h2>
+  <p class="section-note">Voici la version complète, maintenant que toutes les pièces ont été introduites.</p>
+  <div class="diagram-board" style="margin-top: 18px;">
+    <div class="diagram-panel">
+      <div class="diagram-title">Chronologie Complète</div>
+      <pre class="ascii-hero"><code>execve("hello")
+   ↓
+le kernel mappe l'exécutable
+   ↓
+le kernel lance l'interpréteur dynamique
+   ↓
+ld.so charge libc et les autres .so
+   ↓
+ld.so résout puts et écrit la bonne adresse
+   ↓
+ld.so saute vers l'entry point du programme
+   ↓
+_start / CRT startup appelle main()
+   ↓
+main() appelle puts("hello")
+   ↓
+l'appel est déjà correctement branché</code></pre>
+    </div>
+    <div class="diagram-panel">
+      <div class="diagram-title">Le Payoff En Une Phrase</div>
+      <div class="arrow-list">
+        <div class="arrow-step"><b>1</b><span>Le fichier ELF décrit <strong>quoi charger</strong> et <strong>quoi raccorder</strong>.</span></div>
+        <div class="arrow-step"><b>2</b><span>Le kernel démarre le processus, puis confie la préparation dynamique à <code>ld.so</code>.</span></div>
+        <div class="arrow-step"><b>3</b><span><code>ld.so</code> transforme des noms comme <code>puts</code> en vraies adresses mémoire.</span></div>
+        <div class="arrow-step"><b>4</b><span>Quand <code>main()</code> commence, le câblage est déjà fait.</span></div>
+      </div>
+      <div class="callout">Réponse courte à la question de départ : <strong><code>puts("hello")</code> marche parce que le loader a fait son travail avant que <code>main()</code> n'existe pour vous.</strong></div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 17: Windows comparison -->
+<div class="slide">
+  <h2>🪟 Même problème, autre monde : Linux vs Windows</h2>
+  <div class="comparison" style="max-width: 1100px;">
+    <div class="grid-card">
+      <h3>Linux / ELF</h3>
+      <ul class="dense-list">
+        <li><strong>Format</strong> : <code>ELF</code></li>
+        <li><strong>Quoi charger</strong> : segments + section dynamique</li>
+        <li><strong>Quoi résoudre</strong> : symboles externes</li>
+        <li><strong>Quoi patcher</strong> : relocations ELF</li>
+        <li><strong>Qui saute à la fin</strong> : <code>ld.so</code> vers l'entry point</li>
+      </ul>
+    </div>
+    <div class="vs">vs</div>
+    <div class="grid-card">
+      <h3>Windows / PE</h3>
+      <ul class="dense-list">
+        <li><strong>Format</strong> : <code>PE</code></li>
+        <li><strong>Quoi charger</strong> : sections + import table</li>
+        <li><strong>Quoi résoudre</strong> : imports de DLL</li>
+        <li><strong>Quoi patcher</strong> : base relocations</li>
+        <li><strong>Qui saute à la fin</strong> : loader Windows vers l'entry point</li>
+      </ul>
+    </div>
+  </div>
+  <p style="max-width: 900px; text-align: center; margin-top: 1.3em;">
+    Une fois le pipeline ELF compris, la comparaison devient simple :
+    <span class="highlight">même problème général, vocabulaire et formats différents</span>.
+  </p>
+</div>
+
+<!-- SLIDE 18: PE transition -->
+<div class="slide">
+  <h2>🔁 Pourquoi ELF m'a aidé à écrire un loader PE minimaliste</h2>
+  <div class="grid-card" style="max-width: 820px;">
+    <ul class="dense-list">
+      <li>J'avais déjà un modèle mental stable : <strong>charger des blocs, trouver des dépendances, résoudre des noms, patcher des adresses, sauter à l'entry point</strong>.</li>
+      <li>Le format change entre ELF et PE, mais les questions du loader restent presque les mêmes.</li>
+      <li>Comprendre clairement la frontière <code>kernel / loader / runtime</code> m'a évité de mélanger les responsabilités.</li>
+      <li><span class="highlight">ELF m'a donc servi de terrain d'apprentissage pour généraliser ensuite vers PE.</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- SLIDE 19: What's next -->
+<div class="slide">
+  <h2>🔮 Placeholder</h2>
+  <div class="grid-card" style="max-width: 820px;">
+    <p>Contenu à reprendre plus tard.</p>
+  </div>
+</div>
+
+<!-- SLIDE 20: Merci -->
+<div class="slide title-slide">
+  <h1>Placeholder</h1>
+  <div class="accent-line"></div>
+  <p class="subtitle">Fin du deck à reconstruire.</p>
+</div>
+
+</div><!-- /deck -->
+
+<div class="progress-bar" id="progress"></div>
+<div class="slide-counter" id="counter"></div>
+<div class="part-indicator" id="part-indicator"></div>
+<div class="nav-hint">← → pour naviguer</div>
+
+<script>
+(function() {
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  const HASH_PREFIX = '#slide-';
+  const partRanges = [
+    { start: 2, end: 6, label: 'Partie 1 · Qui fait quoi ?' },
+    { start: 7, end: 10, label: 'Partie 2 · Comment lire un ELF' },
+    { start: 11, end: 15, label: 'Partie 3 · Comment passer à l\'exécution' },
+    { start: 16, end: total - 1, label: 'Partie 4 · Apprentissages et suite' }
+  ];
+  let current = 0;
+
+  slides.forEach((slide, index) => {
+    slide.setAttribute('aria-hidden', index === 0 ? 'false' : 'true');
+    slide.id = 'slide-' + (index + 1);
+  });
+
+  function getSlideIndexFromHash() {
+    const hash = window.location.hash;
+    if (!hash.startsWith(HASH_PREFIX)) return 0;
+    const value = Number(hash.slice(HASH_PREFIX.length));
+    if (!Number.isInteger(value) || value < 1 || value > total) return 0;
+    return value - 1;
+  }
+
+  function updateHash() {
+    const target = HASH_PREFIX + (current + 1);
+    if (window.location.hash !== target) {
+      window.history.replaceState(null, '', target);
+    }
+  }
+
+  function showSlide(idx) {
+    if (idx < 0 || idx >= total) return;
+    const previous = current;
+    slides[previous].classList.remove('active');
+    slides[previous].classList.add('exit');
+    slides[current].setAttribute('aria-hidden', 'true');
+    setTimeout(() => slides[previous].classList.remove('exit'), 400);
+    current = idx;
+    slides[current].classList.add('active');
+    slides[current].setAttribute('aria-hidden', 'false');
+    updateUI();
+    updateHash();
+  }
+
+  function updateUI() {
+    document.getElementById('counter').textContent = (current + 1) + ' / ' + total;
+    document.getElementById('progress').style.width = ((current + 1) / total * 100) + '%';
+    const currentPart = partRanges.find((part) => current >= part.start && current <= part.end);
+    document.getElementById('part-indicator').textContent = currentPart ? currentPart.label : '';
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      showSlide(current + 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'Backspace') {
+      e.preventDefault();
+      showSlide(current - 1);
+    }
+  });
+
+  // Touch support
+  let touchStartX = 0;
+  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend', (e) => {
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) {
+      diff > 0 ? showSlide(current + 1) : showSlide(current - 1);
+    }
+  });
+
+  window.addEventListener('hashchange', () => {
+    const idx = getSlideIndexFromHash();
+    if (idx !== current) showSlide(idx);
+  });
+
+  const initialSlide = getSlideIndexFromHash();
+  if (initialSlide !== 0) {
+    slides[0].classList.remove('active');
+    slides[0].setAttribute('aria-hidden', 'true');
+    current = initialSlide;
+    slides[current].classList.add('active');
+    slides[current].setAttribute('aria-hidden', 'false');
+  }
+  updateUI();
+  updateHash();
+})();
+</script>
+</body>
+</html>
