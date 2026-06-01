@@ -158,6 +158,117 @@
     line-height: 1.6;
   }
 
+  .terminal-block {
+    background: #000;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 16px 24px;
+    margin: 0.8em 0;
+  }
+
+  .terminal-header {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #333;
+  }
+
+  .terminal-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  .terminal-dot.red { background: #ff5f56; }
+  .terminal-dot.yellow { background: #ffbd2e; }
+  .terminal-dot.green { background: #27c93f; }
+
+  .terminal-line {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: #e4e4e7;
+    margin: 0;
+    white-space: pre;
+  }
+
+  .terminal-line .prompt {
+    color: var(--green);
+  }
+
+  .terminal-line .output {
+    color: var(--text);
+  }
+
+  .code-file {
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 0;
+    margin: 0.8em 0;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  .code-file-header {
+    display: flex;
+    align-items: center;
+    background: #252526;
+    padding: 0;
+    border-bottom: 1px solid #3c3c3c;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 0.8rem;
+    color: #858585;
+    overflow: hidden;
+  }
+
+  .code-file-header span {
+    background: #1e1e1e;
+    padding: 8px 16px;
+    border-top: 2px solid #007acc;
+    color: #e7e7e7;
+    border-right: 1px solid #252526;
+    border-left: 1px solid #252526;
+  }
+
+  .code-file-header::after {
+    content: "✕";
+    padding: 0 12px;
+    font-size: 0.7rem;
+    color: #858585;
+    cursor: default;
+  }
+
+  .code-file-header::after:hover {
+    background: #c75450;
+    color: #fff;
+  }
+
+  .code-file pre {
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    padding: 16px 20px;
+  }
+
+  .code-file pre code {
+    color: #d4d4d4;
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
+  .code-file .keyword { color: #569cd6; }
+  .code-file .string { color: #ce9178; }
+  .code-file .function { color: #dcdcaa; }
+  .code-file .type { color: #4ec9b0; }
+  .code-file .number { color: #b5cea8; }
+  .code-file .preprocessor { color: #c586c0; }
+  .code-file .comment { color: #6a9955; font-style: italic; }
+  .code-file .punctuation { color: #d4d4d4; }
+
   .col {
     display: flex;
     gap: 40px;
@@ -832,9 +943,9 @@
   /* --- mmap visual --- */
   .mmap-visual {
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    grid-template-columns: auto 32px auto 60px auto;
     grid-template-rows: repeat(5, auto);
-    gap: 24px;
+    gap: 0;
     align-items: start;
     max-width: 1140px;
     width: 100%;
@@ -844,19 +955,50 @@
     display: contents;
   }
 
-  /* Left column (Sur disque) → column 1 */
-  .mmap-side:first-of-type > :nth-child(1) { grid-area: 1 / 1; }
-  .mmap-side:first-of-type > :nth-child(2) { grid-area: 2 / 1; }
-  .mmap-side:first-of-type > :nth-child(3) { grid-area: 3 / 1; }
-  .mmap-side:first-of-type > :nth-child(4) { grid-area: 4 / 1; }
-  .mmap-side:first-of-type > :nth-child(5) { grid-area: 5 / 1; }
+  .mmap-pipeline {
+    grid-column: 1;
+    grid-row: 1 / span 5;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-right: 16px;
+  }
 
-  /* Right column (En mémoire) → column 3 */
-  .mmap-side:last-of-type > :nth-child(1) { grid-area: 1 / 3; }
-  .mmap-side:last-of-type > :nth-child(2) { grid-area: 2 / 3; }
-  .mmap-side:last-of-type > :nth-child(3) { grid-area: 3 / 3; }
-  .mmap-side:last-of-type > :nth-child(4) { grid-area: 4 / 3; }
-  .mmap-side:last-of-type > :nth-child(5) { grid-area: 5 / 3; }
+  .mmap-splitter {
+    grid-column: 2;
+    grid-row: 1 / span 5;
+    border-right: 2px dashed rgba(255,255,255,0.1);
+    align-self: center;
+  }
+
+  /* Middle column (Sur disque) → column 3 */
+  .mmap-side:first-of-type > :nth-child(1) { grid-area: 1 / 3; }
+  .mmap-side:first-of-type > :nth-child(2) { grid-area: 2 / 3; }
+  .mmap-side:first-of-type > :nth-child(3) { grid-area: 3 / 3; }
+  .mmap-side:first-of-type > :nth-child(4) { grid-area: 4 / 3; }
+  .mmap-side:first-of-type > :nth-child(5) { grid-area: 5 / 3; }
+
+  /* Arrow column */
+  .mmap-arrow-col {
+    grid-column: 4;
+    grid-row: 1 / span 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    font-size: 4.2rem;
+    line-height: 1;
+    font-weight: 800;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(108,99,255,0.28);
+  }
+
+  /* Right column (En mémoire) → column 5 */
+  .mmap-side:last-of-type > :nth-child(1) { grid-area: 1 / 5; }
+  .mmap-side:last-of-type > :nth-child(2) { grid-area: 2 / 5; }
+  .mmap-side:last-of-type > :nth-child(3) { grid-area: 3 / 5; }
+  .mmap-side:last-of-type > :nth-child(4) { grid-area: 4 / 5; }
+  .mmap-side:last-of-type > :nth-child(5) { grid-area: 5 / 5; }
 
   .mmap-side-label {
     font-size: 1.05rem;
@@ -963,13 +1105,7 @@
     background: rgba(107,114,128,0.08);
   }
 
-  .mmap-pipeline {
-    grid-column: 2;
-    grid-row: 1 / span 5;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
+
 
   .mmap-step {
     display: flex;
@@ -1092,7 +1228,7 @@
   }
 
   .reloc-panel {
-    padding: 20px 22px;
+    padding: 18px 22px;
     border-radius: 14px;
     border: 1px solid #2a2d3a;
     background: var(--surface);
@@ -1495,7 +1631,15 @@
     grid-template-columns: repeat(4, 1fr);
     gap: 18px;
     width: 100%;
-    max-width: 1080px;
+    max-width: 1200px;
+  }
+
+  .route-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    width: 100%;
+    max-width: 1100px;
   }
 
   .route-card {
@@ -1504,6 +1648,28 @@
     border-radius: 16px;
     padding: 20px 22px;
     min-height: 220px;
+  }
+
+  .route-card.conclusion {
+    display: flex;
+    flex-direction: column;
+    min-height: 260px;
+    padding: 36px 36px 36px;
+  }
+
+  .route-card.conclusion h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    min-height: 2.4rem;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+    margin: 0 0 0.8em 0;
+  }
+
+  .route-card.conclusion p {
+    font-size: 1.05rem;
+    margin-top: 0;
   }
 
   .route-card .step-no {
@@ -1976,18 +2142,26 @@
   </p>
   <div class="col" style="align-items: center;">
     <div>
-      <pre><code>$ cat hello.c 
-// hello.c
-#include &lt;stdio.h&gt;
+      <div class="code-file">
+        <div class="code-file-header"><span>hello.c</span></div>
+        <pre><code><span class="preprocessor">#include</span> <span class="string">&lt;stdio.h&gt;</span>
 
-int main(void) {
-    puts("hello");
-    return 0;
-}
+<span class="type">int</span> <span class="function">main</span>(<span class="keyword">void</span>) {
+    <span class="function">puts</span>(<span class="string">"hello"</span>);
+    <span class="keyword">return</span> <span class="number">0</span>;
+}</code></pre>
+      </div>
 
-$ gcc hello.c -o hello
-$ ./hello
-hello</code></pre>
+      <div class="terminal-block">
+        <div class="terminal-header">
+          <div class="terminal-dot red"></div>
+          <div class="terminal-dot yellow"></div>
+          <div class="terminal-dot green"></div>
+        </div>
+        <div class="terminal-line"><span class="prompt">$ gcc hello.c -o hello</span></div>
+        <div class="terminal-line"><span class="prompt">$ ./hello</span></div>
+        <div class="terminal-line"><span class="output">hello</span></div>
+      </div>
     </div>
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
       <ul style="text-align: left; max-width: none; margin: 0 auto;">
@@ -2128,7 +2302,7 @@ hello</code></pre>
     <div class="grid-card">
       <h3>ld.so est polyvalent</h3>
       <ul class="dense-list">
-        <li>En général, le kernel va s'occuper de charger le binaire en mémoire et lancer le loader précisé dans les métadata du binaire.</li>
+        <li>En général, le kernel charge le binaire en mémoire et lance le loader demandé par le binaire.</li>
         <li>Cependant, <code>ld.so</code> peut aussi <strong>charger le binaire principal lui-même</strong>, pas seulement les bibliothèques.</li>
       </ul>
     </div>
@@ -2372,9 +2546,40 @@ hello</code></pre>
 
 <!-- SLIDE 12: mmap visual -->
 <div class="slide">
-  <h2>🗺️ Comment un fichier <strong>ELF</strong> devient-il de la mémoire ?</h2>
-  <p class="section-note">Le loader utilise <code>mmap()</code> pour coller les segments directement en mémoire, sans passer par <code>read()</code>.</p>
+  <h2>🗺️ Comment un fichier ELF devient-il de la mémoire ?</h2>
   <div class="mmap-visual">
+    <div class="mmap-pipeline">
+      <div class="mmap-step">
+        <code>open()</code>
+        <span class="mmap-step-desc">fichier .so</span>
+      </div>
+      <div class="mmap-divider">↓</div>
+      <div class="mmap-group">
+        <div class="mmap-group-brace">mmap() <span class="brace-text">× 4</span></div>
+        <div class="mmap-group-items">
+          <div class="mmap-step code"><code>→ code</code></div>
+          <div class="mmap-step const"><code>→ constantes</code></div>
+          <div class="mmap-step data"><code>→ données</code></div>
+          <div class="mmap-step bss"><code>→ BSS</code></div>
+        </div>
+      </div>
+      <div class="mmap-divider">↓</div>
+      <div class="mmap-step bss">
+        <code>memset(0)</code>
+        <span class="mmap-step-desc">zéro le BSS</span>
+      </div>
+      <div class="mmap-divider">↓</div>
+      <div class="mmap-group">
+        <div class="mmap-group-brace">mprotect() <span class="brace-text">× 4</span></div>
+        <div class="mmap-group-items">
+          <div class="mmap-step code"><code>RX</code></div>
+          <div class="mmap-step const"><code>R</code></div>
+          <div class="mmap-step data"><code>RW</code></div>
+          <div class="mmap-step bss"><code>RW</code></div>
+        </div>
+      </div>
+    </div>
+    <div class="mmap-splitter"></div>
     <div class="mmap-side">
       <div class="mmap-side-label">📄 Sur disque</div>
       <div class="mmap-block seg-rx">
@@ -2394,36 +2599,7 @@ hello</code></pre>
         <span>Pas sur disque — taille réservée en mémoire</span>
       </div>
     </div>
-    <div class="mmap-pipeline">
-      <div class="mmap-step">
-        <code>open()</code>
-        <span class="mmap-step-desc">fichier .so</span>
-      </div>
-      <div class="mmap-divider">↓</div>
-      <div class="mmap-group">
-        <div class="mmap-group-brace">mmap() <span class="brace-text">× 3</span></div>
-        <div class="mmap-group-items">
-          <div class="mmap-step code"><code>→ code</code></div>
-          <div class="mmap-step const"><code>→ constantes</code></div>
-          <div class="mmap-step data"><code>→ données</code></div>
-        </div>
-      </div>
-      <div class="mmap-divider">↓</div>
-      <div class="mmap-step bss">
-        <code>memset(0)</code>
-        <span class="mmap-step-desc">remplit le BSS</span>
-      </div>
-      <div class="mmap-divider">↓</div>
-      <div class="mmap-group">
-        <div class="mmap-group-brace">mprotect() <span class="brace-text">× 4</span></div>
-        <div class="mmap-group-items">
-          <div class="mmap-step code"><code>RX</code></div>
-          <div class="mmap-step const"><code>R</code></div>
-          <div class="mmap-step data"><code>RW</code></div>
-          <div class="mmap-step bss"><code>RW</code></div>
-        </div>
-      </div>
-    </div>
+    <div class="mmap-arrow-col">&gt;</div>
     <div class="mmap-side">
       <div class="mmap-side-label">🧠 En mémoire</div>
       <div class="mmap-block seg-rx inline">
@@ -2440,79 +2616,14 @@ hello</code></pre>
       </div>
       <div class="mmap-block bss inline">
         <strong>0x7f...7000</strong>
-        <span>Contiendra les variables globales/static non initialisées → remplies de zéros par défaut</span>
+        <span>Contiendra les variables globales/static non initialisées → mis à zéro par défaut</span>
         <div class="mem-flags">PROT_READ | PROT_WRITE</div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- SLIDE 13: Relocation -->
-<div class="slide">
-  <h2>🔀 Relocation = remplacer des trous par de vraies adresses</h2>
-  <p class="section-note">Le programme appelle des fonctions externes. Mais où se trouvent-elles exactement ?</p>
-  <div class="reloc-visual">
-    <div class="reloc-panel" style="grid-column: 1; grid-row: 1 / 3; align-self: center; display: flex; flex-direction: column; gap: 12px;">
-      <div class="reloc-panel-title">La GOT (Global Offset Table)</div>
-      <p class="fork-desc">Une petite liste qui a été mappé plus tôt par le loader. Chaque entrée est <strong>vide</strong> au chargement. Un emplacement est réservé pour chaque fonction externe.</p>
-      <div class="mem-slot" style="margin-bottom: 4px;">
-        <span class="mem-value hole">0x00000000</span>
-        <span class="mem-label">→ case pour <code>puts</code></span>
-      </div>
-      <div class="mem-slot" style="margin-bottom: 4px;">
-        <span class="mem-value hole">0x00000000</span>
-        <span class="mem-label">→ case pour <code>malloc</code></span>
-      </div>
-      <div class="mem-slot">
-        <span class="mem-value hole">0x00000000</span>
-        <span class="mem-label">→ case pour <code>__libc_start_main</code></span>
-      </div>
-      <p class="callout" style="margin-top: 8px; font-size: 0.9rem;">Quand le compilateur ne connaît pas une adresse réelle il a ajoute une entrée vide dans la GOT — le loader viendra combler les trous.</p>
-    </div>
-    <div class="reloc-panel" style="grid-column: 2; grid-row: 1; display: flex; flex-direction: column;">
-      <div class="reloc-panel-title">La PLT (Procedure Linkage Table)</div>
-      <div class="mem-slot">
-        <span class="mem-value filled">call 0x401000</span>
-        <span class="mem-label">→ le programme appelle la <strong>PLT</strong></span>
-      </div>
-      <div class="mem-slot">
-        <span class="mem-value filled">jmp GOT[n]</span>
-        <span class="mem-label">→ la PLT lit la <strong>GOT</strong> et saute</span>
-      </div>
-      <div class="mem-slot">
-        <span class="mem-value filled">0x7f...a1b2c3</span>
-        <span class="mem-label">→ l'adresse réelle dans <strong>libc</strong></span>
-      </div>
-      <p class="callout" style="margin-top: 14px; font-size: 0.9rem;">La <strong>PLT</strong> est un trampoline : son role est de sauter sur une addresse de fonction précisé dans la GOT.</p>
-    </div>
-    <div class="reloc-panel" style="grid-column: 2; grid-row: 2; display: flex; flex-direction: column;">
-      <div class="reloc-panel-title">Ce qu'on oublie souvent</div>
-      <div class="mem-slot">
-        <span class="mem-value hole">0x00000000</span>
-        <span class="mem-label">→ <code>variable_externe</code> <span class="badge yellow">data</span></span>
-      </div>
-      <div class="mem-slot">
-        <span class="mem-value hole">0x00000000</span>
-        <span class="mem-label">→ <code>tableau_externe</code> <span class="badge yellow">data</span></span>
-      </div>
-      <p class="callout" style="margin-top: auto; font-size: 0.82rem;">La GOT gère tout les symboles externes — pas que les fonctions.</p>
-    </div>
-  </div>
-  <div class="reloc-example">
-    <div class="reloc-example-title">En résumé</div>
-    <div class="reloc-equation">
-      <span class="mem-value hole">GOT[n] = 0</span>
-      <span class="op">→</span>
-      <span>le loader cherche <code>puts</code> dans libc</span>
-      <span class="op">→</span>
-      <span class="mem-value filled">GOT[n] = &puts</span>
-    </div>
-  </div>
-</div>
-
-
-
-<!-- SLIDE 14: Link Map -->
+<!-- SLIDE 13: Link Map -->
 <div class="slide">
   <h2>📊 La structure la plus importante : la link map</h2>
   <p class="section-note">Chaque bibliothèque chargée obtient une entrée dans cette liste chaînée — c'est le registre central du loader.</p>
@@ -2567,6 +2678,71 @@ hello</code></pre>
     </div>
   </div>
 </div>
+
+<!-- SLIDE 14: Relocation -->
+<div class="slide">
+  <h2>🔀 Relocation = remplacer des trous par de vraies adresses</h2>
+  <div class="reloc-visual">
+    <div class="reloc-panel" style="grid-column: 1; grid-row: 1 / 3; align-self: center; display: flex; flex-direction: column; gap: 12px;">
+      <div class="reloc-panel-title">La GOT (Global Offset Table)</div>
+      <p class="fork-desc">Une petite liste qui a été mappé plus tôt par le loader. Chaque entrée est <strong>vide</strong> au chargement. Un emplacement est réservé pour chaque fonction externe.</p>
+      <div class="mem-slot" style="margin-bottom: 4px;">
+        <span class="mem-value hole">0x00000000</span>
+        <span class="mem-label">→ case pour <code>puts</code></span>
+      </div>
+      <div class="mem-slot" style="margin-bottom: 4px;">
+        <span class="mem-value hole">0x00000000</span>
+        <span class="mem-label">→ case pour <code>malloc</code></span>
+      </div>
+      <div class="mem-slot">
+        <span class="mem-value hole">0x00000000</span>
+        <span class="mem-label">→ case pour <code>__libc_start_main</code></span>
+      </div>
+      <p class="callout" style="margin-top: 8px; font-size: 0.9rem;">Quand le compilateur ne connaît pas une adresse réelle il a ajoute une entrée vide dans la GOT — le loader viendra combler les trous.</p>
+    </div>
+    <div class="reloc-panel" style="grid-column: 2; grid-row: 2; display: flex; flex-direction: column;">
+      <div class="reloc-panel-title">La PLT (Procedure Linkage Table)</div>
+      <p class="fork-desc">Les fonctions dans la GOT ne sont pas exploitable sans un petit wrapper autour pour les exécuter.</p>
+      <div class="mem-slot">
+        <span class="mem-value filled">call 0x401000</span>
+        <span class="mem-label">→ le programme appelle la <strong>PLT</strong></span>
+      </div>
+      <div class="mem-slot">
+        <span class="mem-value filled">jmp GOT[n]</span>
+        <span class="mem-label">→ la PLT lit la <strong>GOT</strong> et saute</span>
+      </div>
+      <div class="mem-slot">
+        <span class="mem-value filled">0x7f...a1b2c3</span>
+        <span class="mem-label">→ l'adresse réelle dans <strong>libc</strong></span>
+      </div>
+      <p class="callout" style="margin-top: 14px; font-size: 0.9rem;">La <strong>PLT</strong> est un trampoline : son role est de sauter sur une addresse de fonction précisé dans la GOT.</p>
+    </div>
+    <div class="reloc-panel" style="grid-column: 2; grid-row: 1; display: flex; flex-direction: column;">
+      <div class="reloc-panel-title">Vrai role de la GOT</div>
+      <div class="mem-slot">
+        <span class="mem-value hole">0x00000000</span>
+        <span class="mem-label">→ <code>fonction_externe</code> <span class="badge green">function</span></span>
+      </div>
+      <div class="mem-slot">
+        <span class="mem-value hole">0x00000000</span>
+        <span class="mem-label">→ <code>variable_externe</code> <span class="badge yellow">data</span></span>
+      </div>
+      <p class="callout" style="margin-top: auto; font-size: 0.82rem;">La GOT gère tout les symboles externes — pas que les fonctions.</p>
+    </div>
+  </div>
+  <div class="reloc-example">
+    <div class="reloc-example-title">En résumé</div>
+    <div class="reloc-equation">
+      <span class="mem-value hole">GOT[n] = 0</span>
+      <span class="op">→</span>
+      <span>le loader cherche <code>puts</code> dans libc</span>
+      <span class="op">→</span>
+      <span class="mem-value filled">GOT[n] = &puts</span>
+    </div>
+  </div>
+</div>
+
+
 
 <!-- SLIDE 15: Symbol Lookup -->
 <div class="slide">
@@ -2667,14 +2843,23 @@ hello</code></pre>
 <!-- SLIDE 17: Apprentissages -->
 <div class="slide">
   <h2>🧠 Ce que ce projet m'a appris</h2>
-  <p class="section-note">Comprendre <code>ld.so</code>, ce n'est pas apprendre des API. C'est apprendre à <strong>lire la mémoire</strong>.</p>
-  <div style="max-width: 750px;">
-    <ul class="dense-list">
-      <li>Un binaire n'est pas un blob opaque — c'est une <strong>structure lisible</strong></li>
-      <li>Chaque couche (kernel → loader → CRT → programme) <strong>se passe le relais au démarrage</strong></li>
-      <li>Le linking dynamique, c'est <strong>remplir un annuaire prérempli avec les adresses du runtime</strong></li>
-      <li><span class="highlight">Le modèle mental : lire → mapper → patcher → exécuter</span></li>
-    </ul>
+  <div class="route-grid">
+    <div class="route-card conclusion">
+      <h3>Comprendre comment Linux marche</h3>
+      <p>Du <code>kernel</code> au <code>main()</code>, il y a plusieurs étapes.</p>
+    </div>
+    <div class="route-card conclusion">
+      <h3>Naviguer dans un binaire structuré</h3>
+      <p>Lire les entêtes, suivre les pointeurs, déchiffrer les sections.</p>
+    </div>
+    <div class="route-card conclusion">
+      <h3>Manipuler la mémoire et ses permissions</h3>
+      <p>Utiliser <code>mmap</code> et <code>mprotect</code>. Manipuler le layout en RAM.</p>
+    </div>
+    <div class="route-card conclusion">
+      <h3>Se sentir plus à l'aise avec l'ASM et gcc</h3>
+      <p>Lire un peu d'ASM et ce que le compilateur génère.</p>
+    </div>
   </div>
 </div>
 
@@ -2763,8 +2948,8 @@ hello</code></pre>
   const HASH_PREFIX = '#slide-';
   const partRanges = [
     { start: 2, end: 6, label: 'Partie 1 · Qui fait quoi ?' },
-    { start: 7, end: 11, label: 'Partie 2 · Comment lire un ELF' },
-    { start: 12, end: 16, label: 'Partie 3 · Comment passer à l\'exécution' },
+    { start: 7, end: 10, label: 'Partie 2 · Comment lire un ELF' },
+    { start: 11, end: 16, label: 'Partie 3 · Comment passer à l\'exécution' },
     { start: 17, end: 20, label: 'Partie 4 · Apprentissages' }
   ];
   let current = 0;

@@ -1,5 +1,17 @@
-# ⏱️ Presentation Timing: ELF Magic
-**Total Slot:** 30 Minutes | **Target Speaking Time:** ~25 Minutes | **Buffer:** ~5 Minutes
+# ⏱️ Timing & Guide de Présentation
+**Total Slot:** 30 Minutes | **Target Speaking Time:** ~24 Minutes | **Buffer / Q&A:** ~6 Minutes
+
+---
+
+## 📊 Global Presentation Tracking
+
+| Section | Slides | Est. Time | Complexity | Progress |
+| :--- | :--- | :--- | :--- | :--- |
+| **Intro** | 1–2 | **1 min** | Low (Setup) | `[██░░░░░░░░░░░░░░░░]` |
+| **Partie 1 · Qui fait quoi ?** | 3–8 | **9 mins** | Medium (Concepts) | `[█████░░░░░░░░░░░░░]` |
+| **Partie 2 · Comment lire un ELF** | 9–11 | **3.5 mins** | High (Diagrams) | `[█████████░░░░░░░░░]` |
+| **Partie 3 · Comment passer à l'exécution** | 12–17 | **8.5 mins** | Very High (Core Logic) | `[███████████████░░░]` |
+| **Partie 4 · Apprentissages & Teaser** | 18–20 | **3.5 mins** | Low (Wrap-up) | `[██████████████████]` |
 
 ---
 
@@ -43,8 +55,18 @@
 
 ## 🚀 Global Presentation Tips
 
-*   **Pacing:** Aim for **~1 minute 15 seconds per slide** on average.
+### 1. Pacing & Flow
+*   **Aim for ~1 min 15s per slide** on average.
 *   **The "Why" before the "How":** In Partie 3 (the heavy technical part), always remind *why* we are doing the step before showing the technical implementation.
 *   **Watch the Clock:** Keep a timer on your side. If you hit **15:00** and you are not at Slide 11, you need to speed up.
-*   **Live Demo (Optional):** If you plan to run the code live, fit it between **Slide 16 and Slide 17** (max 2 mins).
-*   **Transition to Teaser:** End on a high note. The `doom95.exe` slide is your "trailer" for the next meetup. Make it exciting.
+
+### 2. Delivery
+*   **Point, Don't Read:** On the diagram slides (9, 12, 16), use your hand to trace the flow on the screen. Do not stand still and read the bullet points.
+*   **The "Why" First:** Before showing *how* `ld.so` does something (e.g., `mmap`), spend 5 seconds reminding them *why* it needs to happen (e.g., "The code is on the disk, but the CPU can't execute files. It needs RAM.").
+
+### 3. Handling Q&A
+*   **The "Parking Lot":** If someone asks a deep technical question during the core slides (Partie 2 or 3), say: *"Great question, that's a bit off our main path. Let's park it and I'll answer after the pipeline summary so we don't lose the thread."*
+*   **Demo Buffer:** If you run a live demo, keep it to a single terminal window pre-opened. Type only the `./hello` execution. Do not live-type `gcc` commands unless you are 100% sure of the flags.
+
+### 4. Ending Strong
+*   **The Teaser (Slide 20):** This is your "movie trailer." Increase your energy here. Make eye contact. The goal is to make them curious enough to come back for the `mon_wine` presentation.
