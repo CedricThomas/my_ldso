@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ELF magic: A quick tour of dynamic linking/loading on linux</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <style>
   :root {
     --bg: #0f1117;
@@ -832,51 +833,69 @@
   .mmap-visual {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
-    gap: 16px;
+    grid-template-rows: repeat(5, auto);
+    gap: 24px;
     align-items: start;
-    max-width: 960px;
+    max-width: 1140px;
     width: 100%;
   }
 
   .mmap-side {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+    display: contents;
   }
 
+  /* Left column (Sur disque) → column 1 */
+  .mmap-side:first-of-type > :nth-child(1) { grid-area: 1 / 1; }
+  .mmap-side:first-of-type > :nth-child(2) { grid-area: 2 / 1; }
+  .mmap-side:first-of-type > :nth-child(3) { grid-area: 3 / 1; }
+  .mmap-side:first-of-type > :nth-child(4) { grid-area: 4 / 1; }
+  .mmap-side:first-of-type > :nth-child(5) { grid-area: 5 / 1; }
+
+  /* Right column (En mémoire) → column 3 */
+  .mmap-side:last-of-type > :nth-child(1) { grid-area: 1 / 3; }
+  .mmap-side:last-of-type > :nth-child(2) { grid-area: 2 / 3; }
+  .mmap-side:last-of-type > :nth-child(3) { grid-area: 3 / 3; }
+  .mmap-side:last-of-type > :nth-child(4) { grid-area: 4 / 3; }
+  .mmap-side:last-of-type > :nth-child(5) { grid-area: 5 / 3; }
+
   .mmap-side-label {
-    font-size: 0.85rem;
+    font-size: 1.05rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted);
-    margin-bottom: 4px;
+    margin-bottom: 8px;
   }
 
   .mmap-block {
-    padding: 10px 16px;
-    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 18px 24px;
+    border-radius: 14px;
     border: 1px solid #34384a;
     background: var(--surface);
-    font-size: 0.88rem;
+    font-size: 1.1rem;
+    align-self: center;
   }
 
   .mmap-block.seg-rx {
-    border-left: 4px solid var(--elf-segments);
+    border-left: 5px solid var(--elf-segments);
     background: linear-gradient(90deg, var(--elf-segments-bg), var(--surface) 50%);
   }
 
   .mmap-block.seg-r {
-    border-left: 4px solid var(--elf-pht);
+    border-left: 5px solid var(--elf-pht);
     background: linear-gradient(90deg, var(--elf-pht-bg), var(--surface) 50%);
   }
 
   .mmap-block.seg-rw {
-    border-left: 4px solid var(--elf-dynamic);
+    border-left: 5px solid var(--elf-dynamic);
     background: linear-gradient(90deg, var(--elf-dynamic-bg), var(--surface) 50%);
   }
 
   .mmap-block.bss {
-    border-left: 4px solid #4b5563;
+    border-left: 5px solid #4b5563;
     border-style: dashed;
     background: rgba(255,255,255,0.02);
   }
@@ -884,12 +903,12 @@
   .mmap-block strong {
     display: block;
     color: var(--text);
-    font-size: 0.9rem;
+    font-size: 1.15rem;
   }
 
   .mmap-block span {
     color: var(--muted);
-    font-size: 0.78rem;
+    font-size: 1rem;
   }
 
   .mmap-block.inline strong,
@@ -903,17 +922,19 @@
   .mmap-block.inline {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    justify-content: center;
+    align-self: center;
+    gap: 5px;
   }
 
   .mmap-block.inline .mem-flags {
     display: inline-block;
     width: fit-content;
-    padding: 2px 7px;
-    border-radius: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
     background: rgba(255,255,255,0.05);
     font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-    font-size: 0.72rem;
+    font-size: 0.95rem;
     color: var(--muted);
     letter-spacing: 0.02em;
   }
@@ -943,59 +964,61 @@
   }
 
   .mmap-pipeline {
+    grid-column: 2;
+    grid-row: 1 / span 5;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 8px;
   }
 
   .mmap-step {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 4px 10px;
-    border-radius: 6px;
+    gap: 14px;
+    padding: 8px 16px;
+    border-radius: 8px;
     border: 1px solid #2a2d3a;
     background: rgba(255,255,255,0.02);
-    font-size: 0.8rem;
+    font-size: 1.05rem;
     color: var(--text);
     white-space: nowrap;
   }
 
-  .mmap-step.code { border-left: 3px solid var(--elf-segments); }
-  .mmap-step.const { border-left: 3px solid var(--elf-pht); }
-  .mmap-step.data { border-left: 3px solid var(--elf-dynamic); }
-  .mmap-step.bss { border-left: 3px dashed #4b5563; }
+  .mmap-step.code { border-left: 4px solid var(--elf-segments); }
+  .mmap-step.const { border-left: 4px solid var(--elf-pht); }
+  .mmap-step.data { border-left: 4px solid var(--elf-dynamic); }
+  .mmap-step.bss { border-left: 4px dashed #4b5563; }
 
   .mmap-step code {
-    font-size: 0.78rem;
+    font-size: 1rem;
   }
 
   .mmap-step-desc {
     color: var(--muted);
-    font-size: 0.74rem;
+    font-size: 0.95rem;
   }
 
   .mmap-group {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 6px;
   }
 
   .mmap-group-brace {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.78rem;
+    gap: 10px;
+    font-size: 1.05rem;
     color: var(--accent);
     font-weight: 600;
-    padding: 3px 8px;
+    padding: 6px 14px;
     border: 1px solid rgba(108,99,255,0.25);
-    border-radius: 6px;
+    border-radius: 8px;
     background: rgba(108,99,255,0.08);
   }
 
   .mmap-group-brace .brace-text {
-    font-size: 0.65rem;
+    font-size: 0.88rem;
     opacity: 0.7;
     font-weight: 400;
   }
@@ -1003,14 +1026,14 @@
   .mmap-group-items {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    padding: 1px 0;
+    gap: 4px;
+    padding: 2px 0;
   }
 
   .mmap-divider {
     text-align: center;
     color: var(--accent);
-    font-size: 0.8rem;
+    font-size: 1.1rem;
     line-height: 1;
     opacity: 0.3;
   }
@@ -1062,6 +1085,7 @@
   .reloc-visual {
     display: grid;
     grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
     gap: 24px;
     max-width: 1000px;
     width: 100%;
@@ -1908,7 +1932,7 @@
     <div class="route-card">
       <div class="step-no">Partie 3</div>
       <h3>Passer à l'exécution</h3>
-      <p>Mapper des segments, charger des dépendances, préparer le runtime C, puis exécuter <code>main()</code>.</p>
+      <p>Mapper des segments, charger des dépendances, résoudre les symboles, et appliquer les relocations.</p>
     </div>
     <div class="route-card">
       <div class="step-no">Partie 4</div>
@@ -1948,10 +1972,9 @@
 <div class="slide">
   <h2>💡 Gardons un exemple simple en tête</h2>
   <p style="max-width: 700px; text-align: center; margin-bottom: 1.5em;">
-    On va suivre un mini programme <strong>hello</strong> qui appelle <code>puts("hello")</code>. Le but de la présentation est simple :
-    <strong>Découvrir comment cet appel finit par fonctionner</strong>
+    Le but: découvrir comment <strong>hello</strong>  peut utiliser <code>puts("hello")</code>
   </p>
-  <div class="col">
+  <div class="col" style="align-items: center;">
     <div>
       <pre><code>$ cat hello.c 
 // hello.c
@@ -1966,11 +1989,11 @@ $ gcc hello.c -o hello
 $ ./hello
 hello</code></pre>
     </div>
-    <div>
-      <ul>
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+      <ul style="text-align: left; max-width: none; margin: 0 auto;">
         <li>Le binaire <code>hello</code> ne contient pas l'implémentation de <code>puts()</code></li>
         <li>Il déclare simplement : "j'aurai besoin de la lib C au démarrage"</li>
-        <li>Un composant <strong>invisible</strong> va trouver cette librairie et brancher les appels de fonctions aux bonnes adresses</li>
+        <li>Un composant <strong>invisible</strong> va trouver cette librairie et la brancher</li>
         <li><span class="highlight">Ce composant, c'est <code>ld.so</code></span></li>
       </ul>
     </div>
@@ -1981,7 +2004,7 @@ hello</code></pre>
 <div class="slide">
   <h2>🎯 <code>main()</code> is a lie</h2>
   <p style="max-width: 700px; text-align: center; margin-bottom: 1.5em;">
-    Avant <code>main()</code>, plusieurs acteurs apparaissent déjà dans le démarrage du programme.
+    Avant <code>main()</code>, plusieurs acteurs interviennent !
   </p>
   <div class="flow">
     <div class="flow-step" style="border-color: #4b5563; background: rgba(75,85,99,0.16);">
@@ -2002,10 +2025,10 @@ hello</code></pre>
   </div>
   <div style="margin-top: 1.5em;">
     <ul style="max-width: 600px;">
-      <li>Le <strong>kernel</strong> est l'acteur externe qui lance le processus</li>
-      <li><code>ld.so</code> est le loader dynamique qui résout les dépendances dynamiquement</li>
-      <li><code>_start()</code> est le vrai point d'entrée d'un ELF mettant en place le runtime du binaire</li>
-      <li><code>main()</code> arrive en bout de chaîne et c'est le point d'entrée de votre programme</li>
+      <li>Le <strong>kernel</strong> lance le processus</li>
+      <li><code>ld.so</code> est le loader dynamique</li>
+      <li><code>_start()</code> est le point d'entrée du binaire</li>
+      <li><code>main()</code> c'est le début de votre programme</li>
       <li><span class="highlight">Chaque couche prépare la suivante</span></li>
     </ul>
   </div>
@@ -2018,31 +2041,31 @@ hello</code></pre>
     <div class="responsibility-card file">
       <div class="responsibility-stage">1 · description</div>
       <h3>Le fichier</h3>
-      <p>Le binaire sur disque ne contient qu'une description organisée : du code, des données, des dépendances et des choses à relier.</p>
+      <p>Contient le code compilé et les plans permettant le chargement en mémoire.</p>
       <div class="responsibility-chip">décrit</div>
     </div>
     <div class="responsibility-card kernel">
       <div class="responsibility-stage">2 · lancement</div>
       <h3>Le kernel</h3>
-      <p>Il lance le processus, mappe le binaire principal et donne le contrôle au chargeur dynamique si le programme en a besoin.</p>
+      <p>Charge le binaire en mémoire et délègue le cablage à ld.so.</p>
       <div class="responsibility-chip">démarre</div>
     </div>
     <div class="responsibility-card loader">
       <div class="responsibility-stage">3 · câblage</div>
       <h3><code>ld.so</code></h3>
-      <p>Il charge les bibliothèques, construit la mémoire manquante, résout les symboles et applique les patchs nécessaires.</p>
+      <p>Trouve les bibliothèques, prépare la mémoire, et lance le programme.</p>
       <div class="responsibility-chip">relie</div>
     </div>
     <div class="responsibility-card crt">
       <div class="responsibility-stage">4 · transition</div>
       <h3>Le CRT startup</h3>
-      <p>Il prépare l'environnement d'exécution réel : stack exploitable, variables globales, lib C fonctionnelle et transition finale vers <code>main()</code>.</p>
+      <p>Prépare l'environnement C et appelle <code>main()</code>.</p>
       <div class="responsibility-chip">prépare</div>
     </div>
     <div class="responsibility-card program">
       <div class="responsibility-stage">5 · exécution</div>
       <h3>Votre programme</h3>
-      <p>Il n'entre vraiment en scène qu'une fois tout le câblage terminé. C'est seulement là que <code>main()</code> a du sens.</p>
+      <p>Tout est prêt ! C'est votre code qui tourne.</p>
       <div class="responsibility-chip">utilise</div>
     </div>
     </div>
@@ -2059,13 +2082,13 @@ $ ./hello
 hello
 
 <span class="dim"># ld.so charge lui même le binaire</span>
-<span class="dim"># puis s'occupoe de la relocation</span>
+<span class="dim"># puis s'occupe de la relocation</span>
 $ ./ld.so ./hello
 hello</code></pre>
     <div class="grid-card">
       <h3>ld.so est autonome</h3>
       <ul class="dense-list">
-        <li>Le vrai super-pouvoir de <code>ld.so</code> est qu'il peut <strong>charger le binaire principal lui-même</strong>, pas seulement les bibliothèques.</li>
+        <li><code>ld.so</code> peut aussi <strong>charger le binaire principal lui-même</strong>, pas seulement les bibliothèques.</li>
         <li>C'est ce point de vue qui rend visibles toutes les étapes internes du loader, au lieu de les laisser cachées derrière un mapping côté kernel.</li>
       </ul>
     </div>
@@ -2075,25 +2098,23 @@ hello</code></pre>
 
 <div class="slide">
   <h2>⚖️ Binaire principal vs bibliothèque <code>.so</code></h2>
-  <p class="section-note">Même format ELF, mais pas le même rôle. L'un est le point de départ du processus; l'autre est une dépendance chargée en cours de route.</p>
+  <p class="section-note">Même format ELF, mais pas le même rôle.</p>
   <div class="comparison" style="max-width: 1100px;">
     <div class="grid-card">
       <h3>Exécutable principal</h3>
       <ul class="dense-list" style="margin-top: 0.8em;">
         <li><strong>Qui charge le binaire</strong> : le kernel / <code>ld.so</code></li>
         <li><strong>Rôle</strong> : fournir le point d'entrée du programme</li>
-        <li><strong>Ce qu'il contient souvent</strong> : un chemin vers l'interpréteur dynamique et une liste de dépendances</li>
-        <li><strong>Particularité</strong> : un point d'entrée de l'exécutable est documenté dans le header de l'ELF</li>
+        <li><strong>Ce qu'il contient souvent</strong> : un chemin vers le loader dynamique et une liste de dépendances</li>
       </ul>
     </div>
     <div class="vs">vs</div>
     <div class="grid-card">
       <h3>Bibliothèque partagée</h3>
       <ul class="dense-list" style="margin-top: 0.8em;">
-        <li><strong>Qui charge le binaire</strong> : <code>ld.so</code>, depuis le runtime d'un autre ELF</li>
-        <li><strong>Rôle</strong> : apporter du code, des données et des symboles réutilisables</li>
-        <li><strong>Ce qu'elle contient souvent</strong> : des exports, des imports et ses propres relocations</li>
-        <li><strong>Particularité</strong> : un segment <strong>DT_INIT</strong> permet d'initialiser la bibliothèque </li>
+        <li><strong>Qui charge le binaire</strong> : <code>ld.so</code></li>
+        <li><strong>Rôle</strong> : apporter du code et des variables réutilisables</li>
+        <li><strong>Ce qu'elle contient souvent</strong> : des exports de fonctions et une liste de dépendances</li>
       </ul>
     </div>
   </div>
@@ -2119,7 +2140,7 @@ hello</code></pre>
             <strong><code>ELF header</code></strong>
             <span class="elf-offset">tout en haut du fichier</span>
           </div>
-          <p>Une seule structure. Elle identifie le fichier et dit au loader où regarder ensuite.</p>
+          <p>La carte d'identité du fichier</p>
           <span class="entry-badge single">une seule structure</span>
         </div>
         <div class="elf-block pht">
@@ -2127,35 +2148,31 @@ hello</code></pre>
             <strong><code>Program Header Table</code></strong>
             <span class="elf-offset">liste d'entrées</span>
           </div>
-          <p>La table que <code>ld.so</code> suit vraiment. Chaque entrée décrit un morceau important du fichier ou une action à faire.</p>
+          <p>Une catographie complète du programme</p>
           <span class="entry-badge multi">plusieurs entrées</span>
         </div>
         <div class="elf-block segments">
           <div class="elf-label-row">
             <strong>Segments</strong>
-            <span class="elf-offset">certains seront mappés en mémoire</span>
+            <span class="elf-offset">les données brutes du programme</span>
           </div>
-          <p>Le loader y trouve les blocs à mapper en mémoire, les droits à appliquer, et l'endroit où commencer la phase de linking dynamique.</p>
+          <p>Des sections en vrac référencés par la Program Header Table</p>
           <div class="segment-stack">
             <div class="segment-item">
               <strong>Bloc de code</strong>
               <span>Instructions exécutables du programme.</span>
-              <span class="segment-flags">RX</span>
             </div>
             <div class="segment-item">
               <strong>Bloc constant</strong>
               <span>Constantes et tables consultées en lecture seule.</span>
-              <span class="segment-flags">R</span>
             </div>
             <div class="segment-item">
               <strong>Bloc modifiable</strong>
-              <span>Données globales et zone "zero-filled".</span>
-              <span class="segment-flags">RW</span>
+              <span>Données globales et autres.</span>
             </div>
             <div class="segment-item dynamic">
               <strong>Bloc dynamique</strong>
               <span>Dépendances, symboles et relocations à traiter.</span>
-              <span class="segment-flags">link</span>
             </div>
           </div>
         </div>
@@ -2177,15 +2194,15 @@ hello</code></pre>
         <div class="map-notes">
           <div class="map-note header">
             <h3>1. Header</h3>
-            <p>Une structure unique pour identifier le fichier et trouver la suite.</p>
+            <p>Une structure unique pour identifier le fichier.</p>
           </div>
           <div class="map-note pht">
             <h3>2. Table</h3>
-            <p>Plusieurs entrées qui disent quels blocs du fichier comptent vraiment.</p>
+            <p>Plusieurs entrées qui décrivent les segments du fichier.</p>
           </div>
           <div class="map-note loads">
             <h3>3. Segments</h3>
-            <p>Les morceaux qui deviennent la mémoire du programme ou guident le linking.</p>
+            <p>Les morceaux qui deviennent la mémoire du programme ou aide à la construire.</p>
           </div>
         </div>
       </div>
@@ -2205,7 +2222,7 @@ hello</code></pre>
       <div class="offset-row pht">
         <div class="offset-mark">0x40</div>
         <div class="offset-label">
-          Le bloc <strong>Program Header Table</strong> contient plusieurs entrées utiles
+          Le bloc <strong>Program Header Table</strong> contient plusieurs entrées
           <div class="offset-subtable">
             <div class="offset-subrow">
               <div class="offset-submark">[0]</div>
@@ -2254,23 +2271,23 @@ hello</code></pre>
       <div class="offset-jump">
         <div class="offset-arrow">1</div>
         <div class="offset-card header">
-          <h3>Premier saut</h3>
-          <p>Le loader lit le début du fichier, puis récupère un <strong>offset</strong> vers la table suivante.</p>
+          <h3>Lecture du header ELF</h3>
+          <p>Le loader lit le début du fichier, puis récupère un <strong>offset</strong> vers la <strong>table suivante</strong>.</p>
         </div>
         
       </div>
       <div class="offset-jump">
         <div class="offset-arrow">2</div>
         <div class="offset-card pht">
-          <h3>Deuxième saut</h3>
-          <p>La table contient plusieurs entrées. Le loader les parcourt une par une : il recupère les offsets des segments utiles et s'arrête sur le header du type <code>PT_NULL</code> qui marque la fin des entrées de la table.</p>
+          <h3>Premier saut</h3>
+          <p>Le loader additionne l'<strong>offset</strong> à l'adresse de début du fichier et arrive au début de la <strong>Program Header Table</strong>.</p>
         </div>
       </div>
       <div class="offset-jump">
         <div class="offset-arrow">3</div>
         <div class="offset-card loads">
-          <h3>Ce que le loader en tire</h3>
-          <p>Après ce parcours, il sait <strong>quels segments mapper</strong> et <strong>où trouver les infos dynamiques</strong>.</p>
+          <h3>Deuxième saut</h3>
+          <p>Le loader <strong>parcourt les entrées</strong> une par une, recupère les <strong>offsets</strong> des segments utiles et en sauvegarde les <strong>adresses</strong>.</p>
         </div>
       </div>
     </div>
@@ -2285,24 +2302,25 @@ hello</code></pre>
     <div class="grid-card fork-card loads">
       <div class="fork-header">
         <span class="fork-icon">📦</span>
-        <span class="fork-label">Segments <span class="badge green">mapper</span></span>
+        <span class="fork-label">Segments <code>PT_LOAD</code> <span class="badge green">mapper</span></span>
       </div>
-      <p class="fork-desc">Les blocs qui deviennent de la <strong>mémoire</strong> : code exécutable, constantes et données.</p>
-      <ul>
-        <li>Chaque <code>PT_LOAD</code> contient une partie du fichier → on la mappe à une adresse</li>
-        <li>Chacun avec ses permissions (<code>R | W | X</code>)</li>
+      <p class="fork-desc">Ce que le loader va <strong>mapper en mémoire</strong> :</p>
+      <ul style="margin-top: 12px;">
+        <li><strong>Code</strong> <span class="badge green">R | X</span> — les instructions</li>
+        <li><strong>Constantes</strong> <span class="badge green">R</span> — données en lecture seule</li>
+        <li><strong>Données</strong> <span class="badge green">R | W</span> — variables globales</li>
       </ul>
     </div>
     <div class="grid-card fork-card dynamic">
       <div class="fork-header">
         <span class="fork-icon">🔗</span>
-        <span class="fork-label">Dynamique <span class="badge yellow">relier</span></span>
+        <span class="fork-label">Segment <code>PT_DYNAMIC</code> <span class="badge yellow">relier</span></span>
       </div>
-      <p class="fork-desc">Le bloc <code>PT_DYNAMIC</code> qui guide le <strong>linkage dynamique</strong> : bibliothèques, symboles et relocations.</p>
-      <ul>
-        <li>La liste des bibliothèques à chercher et à charger</li>
-        <li>La table de symboles/fonctions — pour savoir où se trouve <code>puts</code> dans la lib C</li>
-        <li>Les relocations — les "trous" à combiner pour que tout marche</li>
+      <p class="fork-desc">Ce que le loader va <strong>lire pour faire le lien</strong> :</p>
+      <ul style="margin-top: 12px;">
+        <li><strong>Dépendances</strong> — les <em>.so</em> à charger (<em>libc.so</em>...)</li>
+        <li><strong>Symboles</strong> — les noms externes (<em>puts</em>, <em>malloc</em>...)</li>
+        <li><strong>Relocations</strong> — les trous à combler</li>
       </ul>
     </div>
   </div>
@@ -2427,14 +2445,14 @@ _start:
   <h2>🔀 Relocation = remplacer des trous par de vraies adresses</h2>
   <p class="section-note">Le programme appelle des fonctions externes. Mais où se trouvent-elles exactement ?</p>
   <div class="reloc-visual">
-    <div class="reloc-panel">
+    <div class="reloc-panel" style="grid-column: 1; grid-row: 1 / 3; align-self: center; display: flex; flex-direction: column; gap: 12px;">
       <div class="reloc-panel-title">La GOT (Global Offset Table)</div>
-      <p class="fork-desc" style="margin-bottom: 12px;">Une petite table qui vit dans la section <strong>.got.plt</strong> du fichier. Chaque case est un <strong>trou</strong> — un emplacement réservé pour l'adresse d'une fonction externe.</p>
-      <div class="mem-slot">
+      <p class="fork-desc">Une petite liste qui a été mappé plus tôt par le loader. Chaque entrée est <strong>vide</strong> au chargement. Un emplacement est réservé pour chaque fonction externe.</p>
+      <div class="mem-slot" style="margin-bottom: 4px;">
         <span class="mem-value hole">0x00000000</span>
         <span class="mem-label">→ case pour <code>puts</code></span>
       </div>
-      <div class="mem-slot">
+      <div class="mem-slot" style="margin-bottom: 4px;">
         <span class="mem-value hole">0x00000000</span>
         <span class="mem-label">→ case pour <code>malloc</code></span>
       </div>
@@ -2442,10 +2460,10 @@ _start:
         <span class="mem-value hole">0x00000000</span>
         <span class="mem-label">→ case pour <code>__libc_start_main</code></span>
       </div>
-      <p class="callout" style="margin-top: 14px; font-size: 0.9rem;">Le compilateur ne connaît pas les adresses réelles. Il a préparé la GOT avec des zéros — le loader viendra combler les trous.</p>
+      <p class="callout" style="margin-top: 8px; font-size: 0.9rem;">Quand le compilateur ne connaît pas une adresse réelle il a ajoute une entrée vide dans la GOT — le loader viendra combler les trous.</p>
     </div>
-    <div class="reloc-panel">
-      <div class="reloc-panel-title">Comment le code appelle une fonction</div>
+    <div class="reloc-panel" style="grid-column: 2; grid-row: 1; display: flex; flex-direction: column;">
+      <div class="reloc-panel-title">La PLT (Procedure Linkage Table)</div>
       <div class="mem-slot">
         <span class="mem-value filled">call 0x401000</span>
         <span class="mem-label">→ le programme appelle la <strong>PLT</strong></span>
@@ -2458,7 +2476,19 @@ _start:
         <span class="mem-value filled">0x7f...a1b2c3</span>
         <span class="mem-label">→ l'adresse réelle dans <strong>libc</strong></span>
       </div>
-      <p class="callout" style="margin-top: 14px; font-size: 0.9rem;">La <strong>PLT</strong> (Procedure Linkage Table) est un trampoline : le programme ne connaît pas l'adresse réelle, il saute via la GOT. Le loader a juste besoin de remplir la GOT avec les bonnes valeurs.</p>
+      <p class="callout" style="margin-top: 14px; font-size: 0.9rem;">La <strong>PLT</strong> est un trampoline : son role est de sauter sur une addresse de fonction précisé dans la GOT.</p>
+    </div>
+    <div class="reloc-panel" style="grid-column: 2; grid-row: 2; display: flex; flex-direction: column;">
+      <div class="reloc-panel-title">Ce qu'on oublie souvent</div>
+      <div class="mem-slot">
+        <span class="mem-value hole">0x00000000</span>
+        <span class="mem-label">→ <code>variable_externe</code> <span class="badge yellow">data</span></span>
+      </div>
+      <div class="mem-slot">
+        <span class="mem-value hole">0x00000000</span>
+        <span class="mem-label">→ <code>tableau_externe</code> <span class="badge yellow">data</span></span>
+      </div>
+      <p class="callout" style="margin-top: auto; font-size: 0.82rem;">La GOT gère tout les symboles externes — pas que les fonctions.</p>
     </div>
   </div>
   <div class="reloc-example">
@@ -2473,44 +2503,7 @@ _start:
   </div>
 </div>
 
-<!-- SLIDE 11: Architecture -->
-<div class="slide">
-  <h2>🏗️ Mon chargeur en 5 étapes</h2>
-  <div class="flow" style="margin-bottom: 1.5em;">
-    <div class="flow-step">_start<span class="badge">asm</span></div>
-    <div class="flow-arrow">→</div>
-    <div class="flow-step">parser ELF</div>
-    <div class="flow-arrow">→</div>
-    <div class="flow-step">charger les libs</div>
-    <div class="flow-arrow">→</div>
-    <div class="flow-step">résoudre les noms</div>
-    <div class="flow-arrow">→</div>
-    <div class="flow-step">patcher les adresses</div>
-    <div class="flow-arrow">→</div>
-    <div class="flow-step" style="border-color: var(--green);">sauter vers le programme</div>
-  </div>
-  <div class="grid-2" style="max-width: 1000px;">
-    <div class="grid-card">
-      <h3>Lecture et chargement</h3>
-      <ul style="font-size: 0.95rem;">
-        <li>Le binaire principal est déjà mappé par le kernel</li>
-        <li>Les bibliothèques annexes sont ouvertes puis mappées par mon code</li>
-        <li>Les dépendances sont suivies récursivement</li>
-        <li>La recherche suit les chemins usuels de Linux : RPATH, <code>LD_LIBRARY_PATH</code>, RUNPATH, chemins système</li>
-        <li>Le chargeur prépare ensuite un saut vers l'entry point du programme, pas directement vers <code>main()</code></li>
-      </ul>
-    </div>
-    <div class="grid-card">
-      <h3>Branchement final</h3>
-      <ul style="font-size: 0.95rem;">
-        <li>Chaque symbole externe est recherché dans la link map</li>
-        <li>Les emplacements marqués sont corrigés en mémoire</li>
-        <li>Le chargeur garde une vue d'ensemble des bibliothèques déjà chargées</li>
-        <li>Puis il saute enfin vers l'adresse d'entrée du programme, où le CRT startup finira par appeler <code>main()</code></li>
-      </ul>
-    </div>
-  </div>
-</div>
+
 
 <!-- SLIDE 12: Data structures — link map -->
 <div class="slide">
@@ -2519,8 +2512,8 @@ _start:
   <div class="diagram-board" style="margin-top: 18px;">
     <div class="diagram-panel" style="padding-bottom: 14px;">
       <div class="diagram-title">Les Structures de données</div>
-      <div class="struct-block" style="margin-top: 27px;"><span class="struct-cmt">/* Une entrée par DSO chargé */</span><br><span class="dim">struct</span> <span class="struct-type">link_map</span> {<br>  <span class="struct-field">l_name</span>        <span class="struct-type">char*</span>          <span class="struct-cmt">// "libc.so.6"</span><br>  <span class="struct-field">l_addr</span>        <span class="struct-type">Elf64_Addr</span>     <span class="struct-cmt">// adresse de base</span><br>  <span class="struct-field">l_sym</span>         <span class="struct-type">Elf64_Sym*</span>     <span class="struct-cmt">// ↓ table de symboles</span><br>  <span class="struct-field">l_next</span>, <span class="struct-field">l_prev</span>  <span class="struct-type">link_map*</span>    <span class="struct-cmt">// ◄ pointeurs de navigation ►</span><br>};</div>
-      <div class="struct-block" style="margin-top: 12px; border-style: dashed; opacity: 0.88;"><span class="struct-cmt">/* Une entrée = un symbole / une fonction */</span><br><span class="dim">struct</span> <span class="struct-type">Elf64_Sym</span> {<br>  <span class="struct-field">st_name</span>     <span class="struct-type">uint32_t</span>   <span class="struct-cmt">// offset dans une liste de noms</span><br>  <span class="struct-field">st_value</span>    <span class="struct-type">Elf64_Addr</span> <span class="struct-cmt">// offset de la fonction dans la lib</span><br>};</div>
+      <div class="struct-block" style="margin-top: 27px;"><span class="struct-cmt">/* Une entrée par DSO chargé */</span><br><span class="dim">struct</span> <span class="struct-type">link_map</span> {<br>  <span class="struct-field">l_name</span>        <span class="struct-type">char*</span>          <span class="struct-cmt">// "libc.so.6"</span><br>  <span style="color: var(--elf-header); font-weight: 600;">l_addr</span>        <span class="struct-type">Elf64_Addr</span>     <span class="struct-cmt">// adresse de base</span><br>  <span class="struct-field">l_sym</span>         <span class="struct-type">Elf64_Sym*</span>     <span class="struct-cmt">// ↓ table de symboles</span><br>  <span class="struct-field">l_next</span>, <span class="struct-field">l_prev</span>  <span class="struct-type">link_map*</span>    <span class="struct-cmt">// ◄ pointeurs de navigation ►</span><br>};</div>
+      <div class="struct-block" style="margin-top: 12px; border-style: dashed; opacity: 0.88;"><span class="struct-cmt">/* Une entrée = un symbole / une fonction */</span><br><span class="dim">struct</span> <span class="struct-type">Elf64_Sym</span> {<br>  <span class="struct-field">st_name</span>     <span class="struct-type">uint32_t</span>   <span class="struct-cmt">// offset dans une liste de noms</span><br>  <span style="color: var(--elf-header); font-weight: 600;">st_value</span>    <span class="struct-type">Elf64_Addr</span> <span class="struct-cmt">// offset de la fonction dans la lib</span><br>};</div>
     </div>
     <div class="diagram-panel">
       <div class="diagram-title">La link map du hello</div>
@@ -2542,25 +2535,17 @@ _start:
             <span class="chain-export">puts</span>
           </div>
         </div>
-        <div style="color: var(--accent); font-size: 0.75rem; text-align: center; margin: 2px 0;"></div>
-        <div class="chain-link libm">
-          <div class="chain-arrow">◀▶</div>
-          <div class="chain-info">
-            <span class="chain-name">libm.so.6</span>
-            <span class="chain-addr">0x7f...6000</span>
-            <span class="chain-export">cos, sin, …</span>
-          </div>
-        </div>
+
       </div>
-      <div style="margin-top: 1em; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.8rem; color: var(--muted);">
+      <div style="margin-top: 2em; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.8rem; color: var(--muted);">
         <div style="font-size: 0.78rem; color: var(--muted); margin-bottom: 6px;">ex: comment on trouve <span style="color: var(--green);">puts</span> dans <span style="color: var(--green);">libc</span></div>
         <div style="padding: 10px 12px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid #34384a; font-size: 0.78rem;">
           <div style="margin-bottom: 6px;">
-            <span style="color: var(--accent);">l_addr</span> = <span style="color: var(--green);">BASE</span>
+            <span style="color: var(--elf-header); font-weight: 600;">l_addr</span> = <span style="color: var(--green);">BASE</span>
             <span style="color: var(--muted); font-size: 0.72rem;"> — où le kernel a placé libc en mémoire</span>
           </div>
           <div style="margin-bottom: 8px;">
-            <span style="color: var(--accent);">st_value</span> de puts = <span style="color: var(--green);">OFFSET</span>
+            <span style="color: var(--elf-header); font-weight: 600;">st_value</span> de puts = <span style="color: var(--green);">OFFSET</span>
             <span style="color: var(--muted); font-size: 0.72rem;"> — la distance de puts depuis le début de libc</span>
           </div>
           <div style="border-top: 1px solid #34384a; padding-top: 6px;">
@@ -2569,7 +2554,7 @@ _start:
           </div>
         </div>
       </div>
-      <div class="callout" style="margin-top: 0.9em;">
+      <div class="callout" style="margin-top: 1.8em;">
         <strong>3 rôles</strong> : <span class="accent">dédup</span> (déjà chargé ?), <span class="warn">recherche</span> (où est <code>puts</code> ?), <span class="highlight">calcul d'adresse</span> (base + offset).
       </div>
     </div>
@@ -2578,15 +2563,14 @@ _start:
 
 <!-- SLIDE 13: Symbol lookup — concrete walkthrough -->
 <div class="slide">
-  <h2>🔎 Résoudre un symbole</h2>
-  <p class="section-note">On permet un appel valide vers <code>puts</code>.</p>
+  <h2>🔎 Enfin résoudre un symbole !</h2>
   <div style="max-width: 820px; margin: 18px auto 0;">
     <div class="diagram-panel" style="margin-bottom: 24px; padding: 20px 32px; text-align: center; max-width: 600px; margin-left: auto; margin-right: auto;">
       <div class="diagram-title">Le Problème</div>
       <div class="mem-slot" style="display: inline-flex; align-items: center; gap: 12px; padding: 12px 18px; margin: 12px auto 18px;">
         <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--accent2);">0x4011a8</span>
         <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--warn);">0x00000000</span>
-        <span style="font-size: 0.88rem; color: var(--muted);">GOT[puts] <— <span class="warn">trou à combler</span></span>
+        <span style="font-size: 0.88rem; color: var(--muted);">GOT[puts]</span>
       </div>
       <p style="font-size: 0.92rem; color: var(--muted); line-height: 1.8; margin: 0 auto; max-width: 560px;">
         Le binaire contient une relocation sur <code style="color: var(--accent2);">puts</code><br>
@@ -2598,7 +2582,7 @@ _start:
         <div>
           <div class="resolve-label">Parcourir la link map</div>
           <div class="resolve-detail">
-            <span style="color: #6b7280;">./hello</span> <span style="color: var(--accent);">→</span> <span style="color: var(--green); font-weight: 700;">libc.so.6</span> <span style="color: var(--accent);">→</span> <span style="color: var(--accent);">libm.so.6</span> <span style="color: var(--accent);">→</span> <span style="color: var(--warn);">NULL</span>
+            <span style="color: #6b7280;">./hello</span> <span style="color: var(--accent);">→</span> <span style="color: var(--green); font-weight: 700;">libc.so.6</span> <span style="color: var(--accent);">→</span> <span style="color: var(--warn);">NULL</span>
             <br><span style="font-size: 0.82rem;"><strong>libc.so.6</strong> contient <code>puts</code> → ✅</span>
           </div>
         </div>
@@ -2607,133 +2591,87 @@ _start:
         <div class="resolve-num">2</div>
         <div>
           <div class="resolve-label">Lire le symbole</div>
-          <div class="resolve-detail"><code>puts.st_value</code> = <code>0x48a30</code> (offset dans libc)</div>
+          <div class="resolve-detail"><code style="color: var(--elf-header);">puts.st_value</code> = <code>0x48a30</code> (offset dans libc)</div>
         </div>
       </div>
       <div class="resolve-step calc">
         <div class="resolve-num">3</div>
         <div>
           <div class="resolve-label">Calculer l'adresse absolue</div>
-          <div class="resolve-detail"><code>l_addr</code> + <code>st_value</code> = <code>0x7f...a000</code> + <code>0x48a30</code> = <code style="color: var(--green);">0x7f...48a30</code></div>
+          <div class="resolve-detail"><code style="color: var(--elf-header);">l_addr</code> + <code style="color: var(--elf-header);">st_value</code> = <code>0x7f...a000</code> + <code>0x48a30</code> = <code style="color: var(--green);">0x7f...48a30</code></div>
         </div>
       </div>
       <div class="resolve-step write">
         <div class="resolve-num">4</div>
         <div>
-          <div class="resolve-label">Patcher la GOT</div>
+          <div class="resolve-label">Patcher la GOT (Global Offset Table)</div>
           <div class="resolve-detail"><code>*0x4011a8</code> ← <code style="color: var(--green);">0x7f...48a30</code> — slot comblé ✓</div>
         </div>
       </div>
     </div>
-    <div class="callout" style="margin-top: 1em; text-align: center;">
-      Le cœur du linker n'est pas de mapper des pages — c'est de <strong>faire correspondre un nom à une adresse</strong>.
-    </div>
   </div>
 </div>
 
-<!-- SLIDE 14: Features -->
+<!-- SLIDE 16: Full pipeline — the complete timeline -->
 <div class="slide">
-  <h2>🛠️ Ce que mon chargeur sait déjà faire</h2>
-  <div class="grid-2" style="max-width: 1000px;">
-    <div class="grid-card">
-      <h3>Le cœur <span class="badge green">✓</span></h3>
-      <ul style="font-size: 1rem;">
-        <li>Lire un binaire ELF et ses dépendances</li>
-        <li>Charger des bibliothèques via <code>mmap</code></li>
-        <li>Résoudre des symboles entre plusieurs DSO</li>
-        <li>Appliquer les relocations x86_64 utiles</li>
-        <li>Lancer des binaires <code>ET_EXEC</code> et <code>ET_DYN</code></li>
-      </ul>
-    </div>
-    <div class="grid-card">
-      <h3>Outils de debug <span class="badge">✓</span></h3>
-      <ul style="font-size: 1rem;">
-        <li><code>LD_TRACE_LOADED_OBJECTS=1</code> pour lister les dépendances</li>
-        <li><code>LD_SHOW_AUXV=1</code> pour afficher l'environnement de départ</li>
-        <li><code>LD_LIBRARY_PATH</code>, RPATH et RUNPATH</li>
-        <li>Mini libc intégrée pour survivre avant glibc</li>
-        <li>Messages d'erreur exploitables</li>
-      </ul>
-    </div>
-  </div>
-  <div class="stat-row" style="margin-top: 1.5em;">
-    <div class="stat">
-      <div class="big-number">~10</div>
-      <div class="stat-label">fichiers ld.so</div>
-    </div>
-    <div class="stat">
-      <div class="big-number">~9</div>
-      <div class="stat-label">fichiers libc mini</div>
-    </div>
-    <div class="stat">
-      <div class="big-number">0</div>
-      <div class="stat-label">dépendance externe</div>
+  <h2>🔁 hello, de la ligne de commande à l'écran</h2>
+  <p class="section-note">De l'invite de commande à <code>hello</code> sur l'écran.</p>
+  <div style="max-width: 720px;">
+    <div class="resolve-steps">
+      <div class="resolve-step calc">
+        <div class="resolve-num">1</div>
+        <div>
+          <div class="resolve-label">Shell lance <code>ld.so ./hello</code></div>
+          <div class="resolve-detail">ld.so reçoit le binaire cible.</div>
+        </div>
+      </div>
+      <div class="resolve-step match">
+        <div class="resolve-num">2</div>
+        <div>
+          <div class="resolve-label">ld.so parse <code>hello</code></div>
+          <div class="resolve-detail">Header, PHT, segments, bloc dynamique.</div>
+        </div>
+      </div>
+      <div class="resolve-step match">
+        <div class="resolve-num">3</div>
+        <div>
+          <div class="resolve-label">ld.so mappe <code>hello</code> + ses dépendances</div>
+          <div class="resolve-detail">mmap() récursif sur chaque dépendance.</div>
+        </div>
+      </div>
+      <div class="resolve-step write">
+        <div class="resolve-num">4</div>
+        <div>
+          <div class="resolve-label">ld.so applique les relocations GOT</div>
+          <div class="resolve-detail">Résolution des symboles, patch de la GOT.</div>
+        </div>
+      </div>
+      <div class="resolve-step write">
+        <div class="resolve-num">5</div>
+        <div>
+          <div class="resolve-label"><code>_start</code> → <code>puts</code> <span class="badge green">✓</span></div>
+          <div class="resolve-detail">Appel <code>puts</code> via PLT/GOT dans libc.</div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- SLIDE 15: Demo -->
+<!-- SLIDE 17: Apprentissages -->
 <div class="slide">
-  <h2>🚀 Démo : le chargeur au travail</h2>
-  <pre style="max-width: 800px;"><code><span class="dim"># Compiler le linker</span>
-$ make all
-
-<span class="dim"># 1. Voir quelles bibliothèques seraient chargées</span>
-$ LD_TRACE_LOADED_OBJECTS=1 ./ld.so ./test-standalone
-  libuseless.so => ./libuseless.so (0x7f...)
-
-<span class="dim"># 2. Voir les infos fournies au démarrage par le kernel</span>
-$ LD_SHOW_AUXV=1 ./ld.so ./test-standalone
-  AT_PHDR:              0x400040
-  AT_ENTRY:             0x4011a0
-  AT_PROGRAM_HEADERS:   13
-  ...
-
-<span class="dim"># 3. Lancer réellement le programme via mon chargeur</span>
-$ ./ld.so ./test-standalone arg1 arg2
-./test-standalone
-arg1
-arg2
-
-<span class="highlight"># Le point important :</span>
-$ ldd ./test-standalone
-    libuseless.so => ./libuseless.so
-    /lib64/ld-linux-x86-64.so.2</code></pre>
-</div>
-
-<!-- SLIDE 16: Payoff -->
-<div class="slide">
-  <h2>🎯 Donc, comment <code>puts("hello")</code> finit par marcher ?</h2>
-  <div style="max-width: 700px; width: 100%; margin-top: 24px;">
-    <div class="timeline-steps">
-      <div class="timeline-step">
-        <div class="timeline-glyph">▶</div>
-        <div class="timeline-text"><strong>execve("hello")</strong> → kernel mappe le binaire, lance <code>ld.so</code></div>
-      </div>
-      <div class="timeline-step">
-        <div class="timeline-glyph">▶</div>
-        <div class="timeline-text"><code>ld.so</code> mappe <code>libc.so.6</code>, construit la <span class="accent">link map</span></div>
-      </div>
-      <div class="timeline-step highlight-box">
-        <div class="timeline-glyph">⚡</div>
-        <div class="timeline-text"><span class="accent">Résolution</span> : <code>puts</code> trouvé → <code>base + offset</code> → GOT patché</div>
-      </div>
-      <div class="timeline-step">
-        <div class="timeline-glyph">▶</div>
-        <div class="timeline-text"><code>ld.so</code> saute vers <code>_start</code> → CRT → <code>main()</code></div>
-      </div>
-      <div class="timeline-step green-box">
-        <div class="timeline-glyph">✓</div>
-        <div class="timeline-text"><span class="highlight"><code>puts("hello")</code></span> → le GOT pointe vers libc → <strong>ça marche</strong></div>
-      </div>
-    </div>
-    <div class="callout" style="margin-top: 2em; font-size: 1.05rem;">
-      <code>puts("hello")</code> marche parce que le loader a fait tout le travail <span class="accent">avant</span> que <code>main()</code> n'existe pour vous.
-    </div>
+  <h2>🧠 Ce que ce projet m'a appris</h2>
+  <p class="section-note">Comprendre <code>ld.so</code>, ce n'est pas apprendre des API. C'est apprendre à <strong>lire la mémoire</strong>.</p>
+  <div style="max-width: 750px;">
+    <ul class="dense-list">
+      <li>Un binaire n'est pas un blob opaque — c'est une <strong>structure lisible</strong></li>
+      <li>Chaque couche (kernel → loader → CRT → programme) <strong>se passe le relais au démarrage</strong></li>
+      <li>Le linking dynamique, c'est <strong>remplir un annuaire prérempli avec les adresses du runtime</strong></li>
+      <li><span class="highlight">Le modèle mental : lire → mapper → patcher → exécuter</span></li>
+    </ul>
   </div>
 </div>
 
-<!-- SLIDE 17: Windows comparison -->
+<!-- SLIDE 18: Windows comparison -->
 <div class="slide">
   <h2>🪟 Même problème, autre monde : Linux vs Windows</h2>
   <div class="comparison" style="max-width: 1100px;">
@@ -2752,48 +2690,73 @@ $ ldd ./test-standalone
       <h3>Windows / PE</h3>
       <ul class="dense-list">
         <li><strong>Format</strong> : <code>PE</code></li>
-        <li><strong>Quoi charger</strong> : sections + import table</li>
+        <li><strong>Quoi charger</strong> : ?</li>
         <li><strong>Quoi résoudre</strong> : imports de DLL</li>
-        <li><strong>Quoi patcher</strong> : base relocations</li>
+        <li><strong>Quoi patcher</strong> : ?</li>
         <li><strong>Qui saute à la fin</strong> : loader Windows vers l'entry point</li>
       </ul>
     </div>
   </div>
   <p style="max-width: 900px; text-align: center; margin-top: 1.3em;">
-    Une fois le pipeline ELF compris, la comparaison devient simple :
-    <span class="highlight">même problème général, vocabulaire et formats différents</span>.
+    <span class="highlight">Même problème. Autre vocabulaire. Le pipeline est le même.</span>
   </p>
 </div>
 
-<!-- SLIDE 18: PE transition -->
+<!-- SLIDE 19: ASM is ASM -->
 <div class="slide">
-  <h2>🔁 Pourquoi ELF m'a aidé à écrire un loader PE minimaliste</h2>
-  <div class="grid-card" style="max-width: 820px;">
-    <ul class="dense-list">
-      <li>J'avais déjà un modèle mental stable : <strong>charger des blocs, trouver des dépendances, résoudre des noms, patcher des adresses, sauter à l'entry point</strong>.</li>
-      <li>Le format change entre ELF et PE, mais les questions du loader restent presque les mêmes.</li>
-      <li>Comprendre clairement la frontière <code>kernel / loader / runtime</code> m'a évité de mélanger les responsabilités.</li>
-      <li><span class="highlight">ELF m'a donc servi de terrain d'apprentissage pour généraliser ensuite vers PE.</span></li>
-    </ul>
+  <h2>💡 ASM is ASM</h2>
+  <p class="section-note">Le format fichier n'est qu'une enveloppe. Sous le capot, c'est toujours la même machine.</p>
+  <div class="grid-2">
+    <div class="grid-card">
+      <h3>La réalité <span class="badge green">CPU</span></h3>
+      <ul>
+        <li>Le CPU ne connaît ni <em>ELF</em> ni <em>PE</em>.</li>
+        <li>Il exécute des <strong>instructions x86_64</strong>, point.</li>
+      </ul>
+      <p class="fork-desc">Un <code>mov rax, rcx</code> compilé sur Windows est <strong>bit-identique</strong> au même sur Linux.</p>
+    </div>
+    <div class="grid-card">
+      <h3>L'idée <span class="badge yellow">implication</span></h3>
+      <ul>
+        <li>Un binaire PE <strong>pourrait</strong> tourner sur Linux.</li>
+        <li>Il lui manque juste un <strong>loader</strong>.</li>
+      </ul>
+      <p class="fork-desc">Quelqu'un qui <em>lit le format</em>, <em>mappe la mémoire</em> et gère la compatibilité des mécanismes Linux / windows.</p>
+    </div>
   </div>
 </div>
 
-<!-- SLIDE 19: What's next -->
-<div class="slide">
-  <h2>🔮 Placeholder</h2>
-  <div class="grid-card" style="max-width: 820px;">
-    <p>Contenu à reprendre plus tard.</p>
-  </div>
-</div>
-
-<!-- SLIDE 20: Merci -->
+<!-- SLIDE 20: The teaser -->
 <div class="slide title-slide">
-  <h1>Placeholder</h1>
+  <div class="emoji-big">🚀</div>
+  <h1>Prochaine présentation</h1>
   <div class="accent-line"></div>
-  <p class="subtitle">Fin du deck à reconstruire.</p>
+  <p style="max-width: 800px; font-size: 3rem; margin-top: 3em; line-height: 1.3; text-align: center;">
+    De <em>"hello world !"</em> à <strong>doom95.exe</strong> sous Linux
+  </p>
+  <p style="max-width: 600px; margin-top: 2em; color: var(--muted); font-size: 1.3rem;">
+    La roadmap complète d'un loader PE <em>minimaliste</em>.
+  </p>
+</div>
+
+
+<!-- SLIDE: Conclusion -->
+<div class="slide title-slide">
+  <div class="emoji-big">🔗</div>
+  <h1>En résumé</h1>
+  <div class="accent-line"></div>
+  <ul style="max-width: 650px; margin-top: 1em;">
+    <li>Un ELF est une <strong>carte de navigation</strong> : header → PHT → segments</li>
+    <li>Le <strong>kernel</strong> mappe le binaire et délègue à <code>ld.so</code></li>
+    <li><code>ld.so</code> mappe les <strong>libs</strong>, remplit la <strong>GOT</strong>, et saute vers le programme</li>
+    <li>Chaque couche (kernel → loader → CRT → programme) <strong>prépare la suivante</strong></li>
+    <li><span class="highlight"><code>puts("hello")</code> marche parce que tout le câblage est fait avant <code>main()</code></span></li>
+  </ul>
+  <p class="tagline" style="margin-top: 2em;">Merci !</p>
 </div>
 
 </div><!-- /deck -->
+
 
 <div class="progress-bar" id="progress"></div>
 <div class="slide-counter" id="counter"></div>
@@ -2807,9 +2770,9 @@ $ ldd ./test-standalone
   const HASH_PREFIX = '#slide-';
   const partRanges = [
     { start: 2, end: 6, label: 'Partie 1 · Qui fait quoi ?' },
-    { start: 7, end: 10, label: 'Partie 2 · Comment lire un ELF' },
-    { start: 11, end: 15, label: 'Partie 3 · Comment passer à l\'exécution' },
-    { start: 16, end: total - 1, label: 'Partie 4 · Apprentissages et suite' }
+    { start: 7, end: 11, label: 'Partie 2 · Comment lire un ELF' },
+    { start: 12, end: 16, label: 'Partie 3 · Comment passer à l\'exécution' },
+    { start: 17, end: 20, label: 'Partie 4 · Apprentissages' }
   ];
   let current = 0;
 
