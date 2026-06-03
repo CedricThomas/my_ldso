@@ -459,6 +459,31 @@
     line-height: 1.5;
   }
 
+  .elf-explainer {
+    width: 100%;
+    max-width: 940px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .elf-explainer-copy {
+    text-align: center;
+    max-width: 820px;
+  }
+
+  .elf-explainer-copy h2 {
+    margin-bottom: 0.45em;
+  }
+
+  .elf-explainer-copy p {
+    color: var(--muted);
+    font-size: 1.35rem;
+    line-height: 1.8;
+  }
+
   .memory-layers {
     display: flex;
     flex-direction: column;
@@ -2160,6 +2185,17 @@
 
 <!-- SLIDE 2: Problem -->
 <div class="slide">
+  <div class="elf-explainer">
+    <div class="elf-explainer-copy">
+      <h2>📄 Qu'est-ce qu'un ELF ?</h2>
+      <p><strong>ELF</strong> signifie <strong>Executable and Linkable Format</strong>.</p>
+      <p>Le format binaire standard utilisé sur Linux.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 3: Problem -->
+<div class="slide">
   <h2>🧭 Route de la présentation</h2>
   <p class="section-note">En 30 minutes, l'objectif est simple : comprendre qui intervient au démarrage d'un programme, comment un fichier ELF est chargé, comment les bibliothèques sont chargées, et comment le programme les utilise.</p>
   <div class="route-grid">
@@ -2186,7 +2222,7 @@
   </div>
 </div>
 
-<!-- SLIDE 3: Problem -->
+<!-- SLIDE 4: Problem -->
 <div class="slide">
   <h2>📦 Pourquoi des bibliothèques partagées existent ?</h2>
   <div class="comparison">
@@ -3025,10 +3061,10 @@ hello</code></pre>
   const total = slides.length;
   const HASH_PREFIX = '#slide-';
   const partRanges = [
-    { start: 2, end: 6, label: 'Partie 1 · Qui fait quoi ?' },
-    { start: 7, end: 10, label: 'Partie 2 · Comment lire un ELF' },
-    { start: 11, end: 16, label: 'Partie 3 · Comment passer à l\'exécution' },
-    { start: 17, end: 20, label: 'Partie 4 · Apprentissages' }
+    { start: 3, end: 7, label: 'Partie 1 · Qui fait quoi ?' },
+    { start: 8, end: 11, label: 'Partie 2 · Comment lire un ELF' },
+    { start: 12, end: 17, label: 'Partie 3 · Comment passer à l\'exécution' },
+    { start: 18, end: 21, label: 'Partie 4 · Apprentissages' }
   ];
   let current = 0;
 
