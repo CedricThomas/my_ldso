@@ -8,8 +8,6 @@ void __libc_start_main(int (*main)(int, char **, char **),
 	// dl_fini is never defined in crt0.S so we won't use it here
 	(void) dl_fini;
 
-    // Using a local version of write so I can use it even without if I fail the relocation
-
 	if (csu_init)
         ((void (*)(void))csu_init)();
 

@@ -19,7 +19,7 @@
 
 | Slide | Title | Duration | Cumulative | 💡 Presenter Tips |
 | :--- | :--- | :--- | :--- | :--- |
-| **1** | Title | **0:30** | 00:30 | Smile, welcome. No reading. Just set the context. |
+| **1** | Title | **0:30** | 00:30 | Smile, welcome. No reading. Just set the contex: only PIE executables, no lazy loading |
 | **2** | Route | **0:30** | 01:00 | Quick overview. "We go from the file on disk to the text on screen." |
 | **3** | Why Shared Libs? | **1:00** | 02:00 | Don't over-explain memory pages. Focus on "Why do we do this?" |
 | **4** | Example in Mind | **1:30** | 03:30 | Point to the `puts` call. This is our North Star. |

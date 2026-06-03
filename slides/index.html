@@ -943,81 +943,92 @@
   /* --- mmap visual --- */
   .mmap-visual {
     display: grid;
-    grid-template-columns: auto 32px auto 60px auto;
-    grid-template-rows: repeat(5, auto);
-    gap: 0;
+    grid-template-columns: minmax(220px, 0.86fr) 36px minmax(260px, 1fr) 78px minmax(290px, 1.08fr);
+    grid-template-rows: auto 1fr;
+    column-gap: 18px;
+    row-gap: 14px;
     align-items: start;
-    max-width: 1140px;
+    max-width: 1260px;
     width: 100%;
   }
 
   .mmap-side {
-    display: contents;
+    grid-column: auto;
+    grid-row: 1 / span 2;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    align-items: stretch;
+    justify-items: center;
+    gap: 14px;
+    height: 100%;
+  }
+
+  .mmap-side .mmap-side-blocks {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    align-self: center;
+    gap: 12px;
+    width: min(100%, 340px);
+    margin: 0 auto;
+    min-height: 100%;
   }
 
   .mmap-pipeline {
     grid-column: 1;
-    grid-row: 1 / span 5;
+    grid-row: 2;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding-right: 16px;
+    gap: 12px;
+    padding-right: 4px;
   }
 
   .mmap-splitter {
     grid-column: 2;
-    grid-row: 1 / span 5;
+    grid-row: 1 / span 2;
     border-right: 2px dashed rgba(255,255,255,0.1);
-    align-self: center;
+    align-self: stretch;
   }
-
-  /* Middle column (Sur disque) → column 3 */
-  .mmap-side:first-of-type > :nth-child(1) { grid-area: 1 / 3; }
-  .mmap-side:first-of-type > :nth-child(2) { grid-area: 2 / 3; }
-  .mmap-side:first-of-type > :nth-child(3) { grid-area: 3 / 3; }
-  .mmap-side:first-of-type > :nth-child(4) { grid-area: 4 / 3; }
-  .mmap-side:first-of-type > :nth-child(5) { grid-area: 5 / 3; }
 
   /* Arrow column */
   .mmap-arrow-col {
     grid-column: 4;
-    grid-row: 1 / span 5;
+    grid-row: 1 / span 2;
     display: flex;
     align-items: center;
     justify-content: center;
     align-self: center;
-    font-size: 4.2rem;
+    font-size: 4.8rem;
     line-height: 1;
     font-weight: 800;
     color: var(--accent);
     text-shadow: 0 0 20px rgba(108,99,255,0.28);
   }
 
-  /* Right column (En mémoire) → column 5 */
-  .mmap-side:last-of-type > :nth-child(1) { grid-area: 1 / 5; }
-  .mmap-side:last-of-type > :nth-child(2) { grid-area: 2 / 5; }
-  .mmap-side:last-of-type > :nth-child(3) { grid-area: 3 / 5; }
-  .mmap-side:last-of-type > :nth-child(4) { grid-area: 4 / 5; }
-  .mmap-side:last-of-type > :nth-child(5) { grid-area: 5 / 5; }
-
   .mmap-side-label {
-    font-size: 1.05rem;
+    align-self: start;
+    text-align: center;
+    width: 100%;
+    font-size: 1.1rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted);
-    margin-bottom: 8px;
+    margin-bottom: 0;
   }
 
   .mmap-block {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 4px;
-    padding: 18px 24px;
-    border-radius: 14px;
+    gap: 6px;
+    width: 100%;
+    min-height: 126px;
+    padding: 20px 22px;
+    border-radius: 16px;
     border: 1px solid #34384a;
     background: var(--surface);
-    font-size: 1.1rem;
+    font-size: 1.16rem;
     align-self: center;
   }
 
@@ -1045,12 +1056,28 @@
   .mmap-block strong {
     display: block;
     color: var(--text);
-    font-size: 1.15rem;
+    font-size: 1.24rem;
+  }
+
+  .mmap-block .mmap-vaddr {
+    display: inline-block;
+    width: fit-content;
+    margin-top: 2px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.8rem;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    color: var(--text);
   }
 
   .mmap-block span {
     color: var(--muted);
-    font-size: 1rem;
+    font-size: 0.98rem;
+    line-height: 1.38;
   }
 
   .mmap-block.inline strong,
@@ -1066,17 +1093,18 @@
     flex-direction: column;
     justify-content: center;
     align-self: center;
-    gap: 5px;
+    gap: 8px;
+    min-height: 126px;
   }
 
   .mmap-block.inline .mem-flags {
     display: inline-block;
     width: fit-content;
-    padding: 4px 10px;
-    border-radius: 6px;
+    padding: 5px 10px;
+    border-radius: 7px;
     background: rgba(255,255,255,0.05);
     font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: var(--muted);
     letter-spacing: 0.02em;
   }
@@ -1111,11 +1139,11 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 8px 16px;
-    border-radius: 8px;
+    padding: 10px 16px;
+    border-radius: 10px;
     border: 1px solid #2a2d3a;
     background: rgba(255,255,255,0.02);
-    font-size: 1.05rem;
+    font-size: 1.08rem;
     color: var(--text);
     white-space: nowrap;
   }
@@ -1126,30 +1154,30 @@
   .mmap-step.bss { border-left: 4px dashed #4b5563; }
 
   .mmap-step code {
-    font-size: 1rem;
+    font-size: 1.03rem;
   }
 
   .mmap-step-desc {
     color: var(--muted);
-    font-size: 0.95rem;
+    font-size: 0.98rem;
   }
 
   .mmap-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
   }
 
   .mmap-group-brace {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 1.05rem;
+    font-size: 1.1rem;
     color: var(--accent);
     font-weight: 600;
-    padding: 6px 14px;
+    padding: 8px 14px;
     border: 1px solid rgba(108,99,255,0.25);
-    border-radius: 8px;
+    border-radius: 10px;
     background: rgba(108,99,255,0.08);
   }
 
@@ -1162,16 +1190,66 @@
   .mmap-group-items {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 2px 0;
+    gap: 7px;
+    padding: 2px 0 0;
   }
 
   .mmap-divider {
     text-align: center;
     color: var(--accent);
-    font-size: 1.1rem;
+    font-size: 1.35rem;
     line-height: 1;
-    opacity: 0.3;
+    opacity: 0.38;
+  }
+
+  .mmap-side .offset-annotation {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: 100%;
+    min-height: 40px;
+    padding: 2px 0;
+    text-align: center;
+  }
+
+  .mmap-side .offset-annotation .offset-value {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    margin: 0 auto;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(251,191,36,0.28);
+    background: rgba(251,191,36,0.08);
+    font-size: 0.8rem;
+    color: var(--yellow);
+    line-height: 1.3;
+  }
+
+  .mmap-side .offset-annotation .offset-label {
+    max-width: 220px;
+    font-size: 0.74rem;
+    color: var(--muted);
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.3;
+    opacity: 0.78;
+  }
+
+  .mmap-step.ellipsis {
+    opacity: 0.4;
+    border-style: dashed;
+    justify-content: center;
+  }
+
+  .mmap-side .offset-line {
+    width: 2px;
+    height: 14px;
+    background: rgba(251,191,36,0.3);
+    margin: 0 auto;
   }
 
   /* --- step cards --- */
@@ -2117,7 +2195,7 @@
       <p>Chaque programme contient <strong>sa propre copie</strong> de libc, libm, etc.</p>
       <ul style="margin-top: 0.8em;">
         <li>Le binaire grossit vite</li>
-        <li>Le même code est dupliquée en mémoire</li>
+        <li>Le même code est dupliqué en mémoire</li>
         <li>Une mise à jour impose de tout recompiler</li>
       </ul>
     </div>
@@ -2165,7 +2243,7 @@
     </div>
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
       <ul style="text-align: left; max-width: none; margin: 0 auto;">
-        <li>Le binaire <code>hello</code> ne contient pas l'implémentation de <code>puts()</code></li>
+        <li>Le binaire ELF <code>hello</code> ne contient pas l'implémentation de <code>puts()</code></li>
         <li>Il déclare simplement : "j'aurai besoin de la lib C au démarrage"</li>
         <li>Un composant <strong>invisible</strong> va trouver cette librairie et la brancher</li>
         <li><span class="highlight">Ce composant, c'est <code>ld.so</code></span></li>
@@ -2202,12 +2280,12 @@
       </ul>
     </div>
   </div>
-  <pre style="max-width: 700px; margin-top: 1em;"><code><span class="dim">// Point d'entrée réel du loader dynamique :</span>
+  <pre style="max-width: 700px; margin-top: 1em;"><code><span class="dim">// Pas de main classique pour le loader dynamique !</span>
 <span class="highlight">.global _start</span>
 _start:
     xor %ebp, %ebp
     mov %rsp, %rdi
-    call ldso_main        <span class="dim">// commencer sans libc</span></code></pre>
+    call ldso_main        <span class="dim">// appel du main</span></code></pre>
 </div>
 
 <!-- SLIDE 6: Enter ld.so -->
@@ -2238,7 +2316,7 @@ _start:
       <li>Le <strong>kernel</strong> lance le processus</li>
       <li><code>ld.so</code> est le loader dynamique</li>
       <li><code>_start()</code> est le point d'entrée du binaire</li>
-      <li><code>main()</code> c'est le début de votre programme</li>
+      <li><code>main()</code> c'est le début de votre code applicatif,</li>
       <li><span class="highlight">Chaque couche prépare la suivante</span></li>
     </ul>
   </div>
@@ -2290,8 +2368,8 @@ _start:
   <h2>🦸 Le super-pouvoir de <code>ld.so</code></h2>
   <div class="grid-2" style="max-width: 1040px; align-items: center;">
       <pre style="width: 100%; max-width: 460px; margin: 0;">
-<code><span class="dim"># Le kernel pré-charge le binaire en mémoire</span>
-<span class="dim"># puis délègue la relocation à ld.so</span>
+<code><span class="dim"># Le kernel mappe l’exécutable en mémoire</span>
+<span class="dim"># mappe ld.so, puis saute dans ld.so</span>
 $ ./hello
 hello
 
@@ -2363,7 +2441,7 @@ hello</code></pre>
             <strong><code>Program Header Table</code></strong>
             <span class="elf-offset">liste d'entrées</span>
           </div>
-          <p>Une catographie complète du programme</p>
+          <p>Une cartographie complète du programme</p>
           <span class="entry-badge multi">plusieurs entrées</span>
         </div>
         <div class="elf-block segments">
@@ -2371,7 +2449,7 @@ hello</code></pre>
             <strong>Segments</strong>
             <span class="elf-offset">les données brutes du programme</span>
           </div>
-          <p>Des sections en vrac référencés par la Program Header Table</p>
+          <p>Des parties référencés par la Program Header Table</p>
           <div class="segment-stack">
             <div class="segment-item">
               <strong>Bloc de code</strong>
@@ -2394,7 +2472,7 @@ hello</code></pre>
         <div class="elf-block misc">
           <div class="elf-label-row">
             <strong>Autres zones</strong>
-            <span class="elf-offset">souvent pour les outils</span>
+            <span class="elf-offset">souvent pour les outils de debugging</span>
           </div>
         </div>
       </div>
@@ -2413,11 +2491,11 @@ hello</code></pre>
           </div>
           <div class="map-note pht">
             <h3>2. Table</h3>
-            <p>Plusieurs entrées qui décrivent les segments du fichier.</p>
+            <p>Plusieurs entrées qui décrivent les segments du fichier ou aide à préparer l'éxécution.</p>
           </div>
           <div class="map-note loads">
             <h3>3. Segments</h3>
-            <p>Les morceaux qui deviennent la mémoire du programme ou aide à la construire.</p>
+            <p>Les morceaux utilisés par le loader pour construire la mémoire du processus.</p>
           </div>
         </div>
       </div>
@@ -2456,10 +2534,6 @@ hello</code></pre>
               <div class="offset-submark">[n]</div>
               <span><strong>...</strong></span>
             </div>
-            <div class="offset-subrow null">
-              <div class="offset-submark">[*]</div>
-              <span><strong>PT_NULL</strong> -> entrée vide, fin de la liste</span>
-            </div>
           </div>
         </div>
       </div>
@@ -2487,7 +2561,7 @@ hello</code></pre>
       <div class="offset-jump">
         <div class="offset-arrow">1</div>
         <div class="offset-card header">
-          <h3>Lecture du header ELF</h3>
+          <h3>On récupère la carte</h3>
           <p>Le loader lit le début du fichier, puis récupère un <strong>offset</strong> vers la <strong>table suivante</strong>.</p>
         </div>
         
@@ -2495,14 +2569,14 @@ hello</code></pre>
       <div class="offset-jump">
         <div class="offset-arrow">2</div>
         <div class="offset-card pht">
-          <h3>Premier saut</h3>
-          <p>Le loader additionne l'<strong>offset</strong> à l'adresse de début du fichier et arrive au début de la <strong>Program Header Table</strong>.</p>
+          <h3>On lit la carte</h3>
+          <p>Le loader additionne l'<strong>offset</strong> depuis le début du fichier et arrive au début de la <strong>Program Header Table</strong>.</p>
         </div>
       </div>
       <div class="offset-jump">
         <div class="offset-arrow">3</div>
         <div class="offset-card loads">
-          <h3>Deuxième saut</h3>
+          <h3>On conserve les bonnes adresses</h3>
           <p>Le loader <strong>parcourt les entrées</strong> une par une, recupère les <strong>offsets</strong> des segments utiles et en sauvegarde les <strong>adresses</strong>.</p>
         </div>
       </div>
@@ -2513,7 +2587,7 @@ hello</code></pre>
 <!-- SLIDE 11: Two Families -->
 <div class="slide">
   <h2>🧩 Deux familles de segments utiles</h2>
-  <p class="section-note">Après avoir parcouru la <code>Program Header Table</code>, le loader splitte son travail en deux branches.</p>
+  <p class="section-note">Après avoir parcouru la <code>Program Header Table</code>, le loader sépare son travail en deux branches.</p>
   <div class="grid-2">
     <div class="grid-card fork-card loads">
       <div class="fork-header">
@@ -2555,69 +2629,74 @@ hello</code></pre>
       </div>
       <div class="mmap-divider">↓</div>
       <div class="mmap-group">
-        <div class="mmap-group-brace">mmap() <span class="brace-text">× 4</span></div>
+        <div class="mmap-group-brace">mmap(PT_LOAD) <span class="brace-text">× n</span></div>
         <div class="mmap-group-items">
           <div class="mmap-step code"><code>→ code</code></div>
           <div class="mmap-step const"><code>→ constantes</code></div>
           <div class="mmap-step data"><code>→ données</code></div>
-          <div class="mmap-step bss"><code>→ BSS</code></div>
+          <div class="mmap-step ellipsis"><code>…</code></div>
         </div>
       </div>
       <div class="mmap-divider">↓</div>
-      <div class="mmap-step bss">
-        <code>memset(0)</code>
-        <span class="mmap-step-desc">zéro le BSS</span>
-      </div>
-      <div class="mmap-divider">↓</div>
       <div class="mmap-group">
-        <div class="mmap-group-brace">mprotect() <span class="brace-text">× 4</span></div>
+        <div class="mmap-group-brace">mprotect(PT_LOAD) <span class="brace-text">× n</span></div>
         <div class="mmap-group-items">
           <div class="mmap-step code"><code>RX</code></div>
           <div class="mmap-step const"><code>R</code></div>
           <div class="mmap-step data"><code>RW</code></div>
-          <div class="mmap-step bss"><code>RW</code></div>
+          <div class="mmap-step ellipsis"><code>…</code></div>
         </div>
       </div>
     </div>
     <div class="mmap-splitter"></div>
     <div class="mmap-side">
       <div class="mmap-side-label">📄 Sur disque</div>
-      <div class="mmap-block seg-rx">
-        <strong>Code</strong>
-        <span>Instructions à exécuter</span>
-      </div>
-      <div class="mmap-block seg-r">
-        <strong>Constantes</strong>
-        <span>Données fixes</span>
-      </div>
-      <div class="mmap-block seg-rw">
-        <strong>Données</strong>
-        <span>Variables modifiables</span>
-      </div>
-      <div class="mmap-block bss">
-        <strong>BSS - Block Started by Symbol</strong>
-        <span>Pas sur disque — taille réservée en mémoire</span>
+      <div class="mmap-side-blocks">
+        <div class="mmap-block seg-rx">
+          <strong>Code</strong>
+          <span class="mmap-vaddr">vaddr +0x0000</span>
+          <span>Instructions à exécuter</span>
+        </div>
+        <div class="offset-annotation">
+          <span class="offset-value">position virtuel + 0x4000</span>
+        </div>
+        <div class="mmap-block seg-r">
+          <strong>Constantes</strong>
+          <span class="mmap-vaddr">vaddr +0x4000</span>
+          <span>Données fixes</span>
+        </div>
+        <div class="offset-annotation">
+          <span class="offset-value">position virtuel + 0x2000</span>
+        </div>
+        <div class="mmap-block seg-rw">
+          <strong>Données</strong>
+          <span class="mmap-vaddr">vaddr +0x6000</span>
+          <span>Variables modifiables</span>
+        </div>
       </div>
     </div>
     <div class="mmap-arrow-col">&gt;</div>
     <div class="mmap-side">
       <div class="mmap-side-label">🧠 En mémoire</div>
-      <div class="mmap-block seg-rx inline">
-        <strong>0x7f...0000</strong>
-        <div class="mem-flags">PROT_READ | PROT_EXEC</div>
-      </div>
-      <div class="mmap-block seg-r inline">
-        <strong>0x7f...4000</strong>
-        <div class="mem-flags">PROT_READ</div>
-      </div>
-      <div class="mmap-block seg-rw inline">
-        <strong>0x7f...6000</strong>
-        <div class="mem-flags">PROT_READ | PROT_WRITE</div>
-      </div>
-      <div class="mmap-block bss inline">
-        <strong>0x7f...7000</strong>
-        <span>Contiendra les variables globales/static non initialisées → mis à zéro par défaut</span>
-        <div class="mem-flags">PROT_READ | PROT_WRITE</div>
+      <div class="mmap-side-blocks">
+        <div class="mmap-block seg-rx inline">
+          <strong>0x7f...0000</strong>
+          <div class="mem-flags">PROT_READ | PROT_EXEC</div>
+        </div>
+        <div class="offset-annotation">
+          <span class="offset-value">+ 0x4000</span>
+        </div>
+        <div class="mmap-block seg-r inline">
+          <strong>0x7f...4000</strong>
+          <div class="mem-flags">PROT_READ</div>
+        </div>
+        <div class="offset-annotation">
+          <span class="offset-value">+ 0x2000</span>
+        </div>
+        <div class="mmap-block seg-rw inline">
+          <strong>0x7f...6000</strong>
+          <div class="mem-flags">PROT_READ | PROT_WRITE</div>
+        </div>
       </div>
     </div>
   </div>
@@ -2631,7 +2710,7 @@ hello</code></pre>
     <div class="diagram-panel" style="padding-bottom: 14px;">
       <div class="diagram-title">Les Structures de données</div>
       <div class="struct-block" style="margin-top: 27px;"><span class="struct-cmt">/* Une entrée par DSO chargé */</span><br><span class="dim">struct</span> <span class="struct-type">link_map</span> {<br>  <span class="struct-field">l_name</span>        <span class="struct-type">char*</span>          <span class="struct-cmt">// "libc.so.6"</span><br>  <span style="color: var(--elf-header); font-weight: 600;">l_addr</span>        <span class="struct-type">Elf64_Addr</span>     <span class="struct-cmt">// adresse de base</span><br>  <span class="struct-field">l_sym</span>         <span class="struct-type">Elf64_Sym*</span>     <span class="struct-cmt">// ↓ table de symboles</span><br>  <span class="struct-field">l_next</span>, <span class="struct-field">l_prev</span>  <span class="struct-type">link_map*</span>    <span class="struct-cmt">// ◄ pointeurs de navigation ►</span><br>};</div>
-      <div class="struct-block" style="margin-top: 12px; border-style: dashed; opacity: 0.88;"><span class="struct-cmt">/* Une entrée = un symbole / une fonction */</span><br><span class="dim">struct</span> <span class="struct-type">Elf64_Sym</span> {<br>  <span class="struct-field">st_name</span>     <span class="struct-type">uint32_t</span>   <span class="struct-cmt">// offset dans une liste de noms</span><br>  <span style="color: var(--elf-header); font-weight: 600;">st_value</span>    <span class="struct-type">Elf64_Addr</span> <span class="struct-cmt">// offset de la fonction dans la lib</span><br>};</div>
+      <div class="struct-block" style="margin-top: 12px; border-style: dashed; opacity: 0.88;"><span class="struct-cmt">/* Une entrée = un symbole / une fonction */</span><br><span class="dim">struct</span> <span class="struct-type">Elf64_Sym</span> {<br>  <span class="struct-field">st_name</span>     <span class="struct-type">uint32_t</span>   <span class="struct-cmt">// offset dans une liste de noms</span><br>  <span style="color: var(--elf-header); font-weight: 600;">st_value</span>    <span class="struct-type">Elf64_Addr</span> <span class="struct-cmt">// adresse relative de la fonction</span><br>};</div>
     </div>
     <div class="diagram-panel">
       <div class="diagram-title">La link map de hello</div>
@@ -2660,7 +2739,7 @@ hello</code></pre>
         <div style="padding: 10px 12px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid #34384a; font-size: 0.78rem;">
           <div style="margin-bottom: 6px;">
             <span style="color: var(--elf-header); font-weight: 600;">l_addr</span> = <span style="color: var(--green);">BASE</span>
-            <span style="color: var(--muted); font-size: 0.72rem;"> — où le kernel a placé libc en mémoire</span>
+            <span style="color: var(--muted); font-size: 0.72rem;"> — où le loader a placé libc en mémoire</span>
           </div>
           <div style="margin-bottom: 8px;">
             <span style="color: var(--elf-header); font-weight: 600;">st_value</span> de puts = <span style="color: var(--green);">OFFSET</span>
@@ -2673,7 +2752,7 @@ hello</code></pre>
         </div>
       </div>
       <div class="callout" style="margin-top: 1.8em;">
-        <strong>3 rôles</strong> : <span class="accent">dédup</span> (déjà chargé ?), <span class="warn">recherche</span> (où est <code>puts</code> ?), <span class="highlight">calcul d'adresse</span> (base + offset).
+        <strong>3 rôles</strong> : <span class="accent">partage de code</span>, <span class="warn">recherche de symboles</span>, <span class="highlight">calcul d'adresses</span>.
       </div>
     </div>
   </div>
@@ -2685,24 +2764,24 @@ hello</code></pre>
   <div class="reloc-visual">
     <div class="reloc-panel" style="grid-column: 1; grid-row: 1 / 3; align-self: center; display: flex; flex-direction: column; gap: 12px;">
       <div class="reloc-panel-title">La GOT (Global Offset Table)</div>
-      <p class="fork-desc">Une petite liste qui a été mappé plus tôt par le loader. Chaque entrée est <strong>vide</strong> au chargement. Un emplacement est réservé pour chaque fonction externe.</p>
+      <p class="fork-desc">Une petite liste qui a été mappé plus tôt par le loader. Un emplacement est réservé pour chaque fonction externe.</p>
       <div class="mem-slot" style="margin-bottom: 4px;">
-        <span class="mem-value hole">0x00000000</span>
+        <span class="mem-value hole">0x????????</span>
         <span class="mem-label">→ case pour <code>puts</code></span>
       </div>
       <div class="mem-slot" style="margin-bottom: 4px;">
-        <span class="mem-value hole">0x00000000</span>
+        <span class="mem-value hole">0x????????</span>
         <span class="mem-label">→ case pour <code>malloc</code></span>
       </div>
       <div class="mem-slot">
-        <span class="mem-value hole">0x00000000</span>
+        <span class="mem-value hole">0x????????</span>
         <span class="mem-label">→ case pour <code>__libc_start_main</code></span>
       </div>
-      <p class="callout" style="margin-top: 8px; font-size: 0.9rem;">Quand le compilateur ne connaît pas une adresse réelle il a ajoute une entrée vide dans la GOT — le loader viendra combler les trous.</p>
+      <p class="callout" style="margin-top: 8px; font-size: 0.9rem;">Quand le compilateur ne connaît pas une adresse réelle il ajoute une entrée pour elle dans la GOT — le loader viendra la mettre à jour.</p>
     </div>
     <div class="reloc-panel" style="grid-column: 2; grid-row: 2; display: flex; flex-direction: column;">
       <div class="reloc-panel-title">La PLT (Procedure Linkage Table)</div>
-      <p class="fork-desc">Les fonctions dans la GOT ne sont pas exploitable sans un petit wrapper autour pour les exécuter.</p>
+      <p class="fork-desc">Les adresses de fonctions dans la GOT ne sont pas exploitable sans un petit wrapper autour pour les exécuter.</p>
       <div class="mem-slot">
         <span class="mem-value filled">call 0x401000</span>
         <span class="mem-label">→ le programme appelle la <strong>PLT</strong></span>
@@ -2715,25 +2794,25 @@ hello</code></pre>
         <span class="mem-value filled">0x7f...a1b2c3</span>
         <span class="mem-label">→ l'adresse réelle dans <strong>libc</strong></span>
       </div>
-      <p class="callout" style="margin-top: 14px; font-size: 0.9rem;">La <strong>PLT</strong> est un trampoline : son role est de sauter sur une addresse de fonction précisé dans la GOT.</p>
+      <p class="callout" style="margin-top: 14px; font-size: 0.9rem;">La <strong>PLT</strong> est un trampoline : son role est de sauter sur une adresse de fonction précisé dans la GOT.</p>
     </div>
     <div class="reloc-panel" style="grid-column: 2; grid-row: 1; display: flex; flex-direction: column;">
       <div class="reloc-panel-title">Vrai role de la GOT</div>
       <div class="mem-slot">
-        <span class="mem-value hole">0x00000000</span>
+        <span class="mem-value hole">0x????????</span>
         <span class="mem-label">→ <code>fonction_externe</code> <span class="badge green">function</span></span>
       </div>
       <div class="mem-slot">
-        <span class="mem-value hole">0x00000000</span>
+        <span class="mem-value hole">0x????????</span>
         <span class="mem-label">→ <code>variable_externe</code> <span class="badge yellow">data</span></span>
       </div>
-      <p class="callout" style="margin-top: auto; font-size: 0.82rem;">La GOT gère tout les symboles externes — pas que les fonctions.</p>
+      <p class="callout" style="margin-top: auto; font-size: 0.82rem;">La GOT peut servir pour plusieurs type de symboles externes.</p>
     </div>
   </div>
   <div class="reloc-example">
     <div class="reloc-example-title">En résumé</div>
     <div class="reloc-equation">
-      <span class="mem-value hole">GOT[n] = 0</span>
+      <span class="mem-value hole">GOT[n] = ?</span>
       <span class="op">→</span>
       <span>le loader cherche <code>puts</code> dans libc</span>
       <span class="op">→</span>
@@ -2752,7 +2831,7 @@ hello</code></pre>
       <div class="diagram-title">Le Problème</div>
       <div class="mem-slot" style="display: inline-flex; align-items: center; gap: 12px; padding: 12px 18px; margin: 12px auto 18px;">
         <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--accent2);">0x4011a8</span>
-        <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--warn);">0x00000000</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--warn);">0x????????</span>
         <span style="font-size: 0.88rem; color: var(--muted);">GOT[puts]</span>
       </div>
       <p style="font-size: 0.92rem; color: var(--muted); line-height: 1.8; margin: 0 auto; max-width: 560px;">
@@ -2819,7 +2898,7 @@ hello</code></pre>
         <div class="resolve-num">3</div>
         <div>
           <div class="resolve-label">ld.so mappe <code>hello</code> + ses dépendances</div>
-          <div class="resolve-detail">mmap() récursif sur chaque dépendance.</div>
+          <div class="resolve-detail">Chargement récursif des dépendances.</div>
         </div>
       </div>
       <div class="resolve-step write">
@@ -2850,7 +2929,7 @@ hello</code></pre>
     </div>
     <div class="route-card conclusion">
       <h3>Naviguer dans un binaire structuré</h3>
-      <p>Lire les entêtes, suivre les pointeurs, déchiffrer les sections.</p>
+      <p>Lire les entêtes, suivre les pointeurs, déchiffrer les segments et leurs sous-sections.</p>
     </div>
     <div class="route-card conclusion">
       <h3>Manipuler la mémoire et ses permissions</h3>
@@ -2870,8 +2949,8 @@ hello</code></pre>
     <div class="grid-card">
       <h3>Linux / ELF</h3>
       <ul class="dense-list">
-        <li><strong>Format</strong> : <code>ELF</code></li>
-        <li><strong>Quoi charger</strong> : segments + section dynamique</li>
+        <li><strong>Format</strong> : <strong>ELF</strong></li>
+        <li><strong>Quoi charger</strong> : segments <code>PT_LOAD</code> et <code>PT_DYNAMIC</code></li>
         <li><strong>Quoi résoudre</strong> : symboles externes</li>
         <li><strong>Quoi patcher</strong> : relocations ELF</li>
         <li><strong>Qui saute à la fin</strong> : <code>ld.so</code> vers l'entry point</li>
@@ -2881,7 +2960,7 @@ hello</code></pre>
     <div class="grid-card">
       <h3>Windows / PE</h3>
       <ul class="dense-list">
-        <li><strong>Format</strong> : <code>PE</code> (<strong>.exe</strong>)</li>
+        <li><strong>Format</strong> : <strong>PE</strong> (<strong>.exe</strong>)</li>
         <li><strong>Quoi charger</strong> : ?</li>
         <li><strong>Quoi résoudre</strong> : imports de DLL</li>
         <li><strong>Quoi patcher</strong> : ?</li>
@@ -2890,7 +2969,7 @@ hello</code></pre>
     </div>
   </div>
   <p style="max-width: 900px; text-align: center; margin-top: 1.3em;">
-    <span class="highlight">Même problème. Autre vocabulaire. Le pipeline est le même.</span>
+    <span class="highlight">Même problème. Autre vocabulaire. Le pipeline est similaire.</span>
   </p>
 </div>
 
@@ -2911,9 +2990,8 @@ hello</code></pre>
       <h3>L'idée <span class="badge yellow">implication</span></h3>
       <ul>
         <li>Un binaire PE <strong>pourrait</strong> tourner sur Linux.</li>
-        <li>Il lui manque juste un <strong>loader</strong>.</li>
+        <li>Il lui manque une couche de traduction et surtout un <strong>loader</strong> !</li>
       </ul>
-      <p class="fork-desc">Quelqu'un qui <em>lit le format</em>, <em>mappe la mémoire</em> et gère la compatibilité des mécanismes Linux / windows.</p>
     </div>
   </div>
 </div>
@@ -2928,7 +3006,7 @@ hello</code></pre>
     De <em>"Hello World !"</em> à <strong>Doom95.exe</strong> sous Linux
   </p>
   <p style="max-width: 600px; margin-left: auto; margin-right: auto; margin-top: 2em; color: var(--muted); font-size: 1.3rem; text-align: center;">
-    Présentation de la roadmap complète d'un loader PE <em>minimaliste</em> pour Linux (garanti sans mal de crâne)
+    Présentation de la roadmap complète d'un loader PE <em>"minimaliste"</em> pour Linux (garanti sans mal de crâne)
   </p>
 </div>
 
