@@ -4,3 +4,4 @@ int main(void) {
     puts("hello");
     return 0;
 }
+
